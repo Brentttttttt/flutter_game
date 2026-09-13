@@ -1,0 +1,9 @@
+* text=auto
+*.dart text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.png binary
+*.ico binary
+*.ttf binary
+*.ase binary

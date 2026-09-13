@@ -1,0 +1,47 @@
+name: flutter_game
+description: "A cute mobile pixel-art survivor roguelike starring Witch Kitty."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/characters/player_character/color_1/
+    - assets/characters/player_character/color_2/
+    - "assets/characters/enemies/slime/Stanby.png"
+    - "assets/characters/enemies/slime/walk E1.png"
+    - "assets/characters/enemies/slime/walk w1.png"
+    - "assets/characters/enemies/slime/Walk N1.png"
+    - "assets/characters/enemies/slime/Walk S1.png"
+    - "assets/characters/enemies/slime/Atack.png"
+    - "assets/characters/enemies/slime/Death.png"
+    - assets/orbs/orbs-sheet.png
+    - assets/tileset/
+    - assets/xp-gem/xp.png
+    - "assets/level-up-effect/Level Up Effect Spritesheet.png"
+    - assets/orbs/orb-hit-effect/purple/purple-spritesheet.png
+    - assets/orbs/fire-orb-projectile/ShotLoop-Sheet.png
+    - assets/orbs/fire-orb-projectile/Explode-Sheet.png
+    - assets/upgrade-icons/16x16/potion_01a.png
+    - assets/upgrade-icons/16x16/boots_01c.png
+    - assets/upgrade-icons/16x16/staff_01c.png
+    - assets/upgrade-icons/16x16/ring_01d.png
+    - assets/upgrade-icons/16x16/crystal_01c.png
+    - assets/upgrade-icons/16x16/gem_01j.png
+    - assets/upgrade-icons/16x16/pearl_01c.png
+  fonts:
+    - family: friendlyscribbles
+      fonts:
+        - asset: assets/font/friendlyscribbles.ttf
