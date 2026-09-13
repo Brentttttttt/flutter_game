@@ -11,6 +11,7 @@ import '../models/slime_enemy.dart';
 import '../models/magic_orb.dart';
 import '../models/combat_effect.dart';
 import '../models/player_stats.dart';
+import 'vfx_layout.dart';
 
 class GamePainter extends CustomPainter {
   GamePainter({
@@ -55,6 +56,7 @@ class GamePainter extends CustomPainter {
     canvas.translate(-cameraPosition.dx, -cameraPosition.dy);
 
     _drawArena(canvas, size, cameraPosition);
+    _drawLevelUpEffect(canvas);
     _drawWorldEntities(canvas, size, cameraPosition);
     _drawCombatEffects(canvas);
     canvas.restore();
@@ -192,7 +194,12 @@ class GamePainter extends CustomPainter {
       canvas.drawImageRect(
         assets.fireShot,
         ui.Rect.fromLTWH(projectile.animationFrame * 64, 0, 64, 64),
-        const ui.Rect.fromLTWH(-32, -32, 64, 64),
+        const ui.Rect.fromLTWH(
+          -VfxLayout.fireProjectileSize / 2,
+          -VfxLayout.fireProjectileSize / 2,
+          VfxLayout.fireProjectileSize,
+          VfxLayout.fireProjectileSize,
+        ),
         _spritePaint,
       );
       canvas.restore();
@@ -268,32 +275,12 @@ class GamePainter extends CustomPainter {
   }
 
   void _drawSlime(ui.Canvas canvas, SlimeEnemy slime) {
-    const frameSize = 64.0;
-    late final ui.Image sheet;
-    late final int frame;
-
-    if (slime.lifeState == SlimeLifeState.dying) {
-      sheet = assets.slimeDeath;
-      frame = slime.deathFrame;
-    } else {
-      frame = slime.animationFrame;
-      sheet = switch (slime.activity) {
-        SlimeActivity.idle => assets.slimeIdle,
-        SlimeActivity.attacking => assets.slimeAttack,
-        SlimeActivity.walking => switch (slime.facing) {
-          SlimeFacing.north => assets.slimeWalkNorth,
-          SlimeFacing.south => assets.slimeWalkSouth,
-          SlimeFacing.east => assets.slimeWalkEast,
-          SlimeFacing.west => assets.slimeWalkWest,
-        },
-      };
-    }
-
-    final source = ui.Rect.fromLTWH(frame * frameSize, 0, frameSize, frameSize);
+    final sheet = assets.slimeSheets[slime.color]!;
+    final source = slime.sourceRect;
     final center = _snapOffset(slime.position);
     canvas.save();
     canvas.translate(center.dx, center.dy);
-    if (slime.mirrorAttackHorizontally) canvas.scale(-1, 1);
+    if (slime.mirrorHorizontally) canvas.scale(-1, 1);
     final destination = ui.Rect.fromCenter(
       center: ui.Offset.zero,
       width: SlimeEnemy.renderSize,
@@ -329,6 +316,9 @@ class GamePainter extends CustomPainter {
   void _drawCombatEffects(ui.Canvas canvas) {
     for (final effect in world.effects) {
       final isArcane = effect.kind == CombatEffectKind.arcaneImpact;
+      final renderSize = isArcane
+          ? VfxLayout.arcaneImpactSize
+          : VfxLayout.fireExplosionSize;
       final source = isArcane
           ? ui.Rect.fromLTWH(
               (effect.frame % 4) * 128,
@@ -342,23 +332,8 @@ class GamePainter extends CustomPainter {
         source,
         ui.Rect.fromCenter(
           center: _snapOffset(effect.position),
-          width: 64,
-          height: 64,
-        ),
-        _spritePaint,
-      );
-    }
-    if (world.runState == GameRunState.levelUpEffect) {
-      final frame = (world.levelUpEffectTime / GameBalance.levelUpDuration * 12)
-          .floor()
-          .clamp(0, 11);
-      canvas.drawImageRect(
-        assets.levelUp,
-        ui.Rect.fromLTWH(frame * 128, 0, 128, 128),
-        ui.Rect.fromCenter(
-          center: _snapOffset(world.player.position),
-          width: 128,
-          height: 128,
+          width: renderSize,
+          height: renderSize,
         ),
         _spritePaint,
       );
@@ -381,6 +356,25 @@ class GamePainter extends CustomPainter {
       label.paint(canvas, position);
       canvas.restore();
     }
+  }
+
+  void _drawLevelUpEffect(ui.Canvas canvas) {
+    if (world.runState != GameRunState.levelUpEffect) return;
+    final frame = (world.levelUpEffectTime / GameBalance.levelUpDuration * 12)
+        .floor()
+        .clamp(0, 11);
+    // This upright, unmirrored aura shares the world/camera transform and is
+    // painted before Kitty, so the beam and wings never cover her face/body.
+    final center = _snapOffset(world.player.position);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.drawImageRect(
+      assets.levelUp,
+      ui.Rect.fromLTWH(frame * 128, 0, 128, 128),
+      VfxLayout.levelUpBounds(ui.Offset.zero),
+      _spritePaint,
+    );
+    canvas.restore();
   }
 
   final Map<(int, bool), TextPainter> _damageLabels = {};

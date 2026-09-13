@@ -28,8 +28,12 @@ are game choices except where the Aseprite timings are explicitly stated below.
   Frame1.png` through `Level Up Effect Frame12.png` (each **128 × 128**).
 - Frame 0 is intentionally completely transparent. Later frames include authored
   partial alpha for the fading wings/sparkles; preserve that transparency.
-- The effect is centered on the frame's horizontal midpoint. Keep a fixed square
-  destination centered on the player, with no per-frame crop or anchor changes.
+- The effect is centered on source X=64. The authored wings occupy roughly
+  source Y=70–106, and the ground arc Y=118–121. Use the fixed source ground
+  anchor `(64,120)` aligned to Kitty's world feet, `player.position + (0,28)`.
+  The destination is a uniform 192px square (1.5×), drawn behind Kitty without
+  rotation, flipping, per-frame cropping or anchor changes. Centering the whole
+  128px source canvas on Kitty would incorrectly lower the wings.
 
 ## Orb impact effect
 
@@ -41,6 +45,8 @@ are game choices except where the Aseprite timings are explicitly stated below.
 - Frame `i` is `(128*(i % 4), 128*(i ~/ 4), 128, 128)` for `i = 0..7`.
 - Purple is suitable for Arcane Orb hits. Frame 7 is a deliberately faint fade;
   retain its alpha and remove the effect after the sequence completes.
+- The visual destination is 96px square, up from 64px (1.5×), centered on the
+  recorded contact point. Damage and collision radii are independent.
 - Invisible RGB data is purple even where alpha is zero. Do not flatten the
   original PNG onto a background or treat RGB color as an opacity mask.
 
@@ -62,6 +68,10 @@ For a heading measured with `atan2(dy, dx)`, rotate the source by `heading + pi/
 The actual flame occupies approximately 10 × 17 pixels inside the 64 × 64 canvas,
 around x=32 and y=35. Preserve the shared canvas anchor between frames. The
 explosion expands around the same center rather than filling its entire canvas.
+Shot rendering uses a 96px square (1.5× the previous visual size); explosion
+rendering uses a 104px square (1.625×). Both preserve the original aspect ratio
+and nearest-neighbor sampling. Projectile damage, speed, range, lifetime and
+collision behavior remain unchanged.
 
 ## Existing orb atlas
 
@@ -99,7 +109,38 @@ Suitable inspected icons under `assets/upgrade-icons/16x16/`:
 
 These are actual supplied filenames; no replacement icons are needed.
 
-## Animated Slime
+## Current slime_v2 enemies
+
+Files are in `assets/characters/enemies/slime_v2/`: `Slime_Blue.png`,
+`Slime_Brown.png`, `Slime_Green.png`, `Slime_Grey.png`, `Slime_Orange.png`,
+`Slime_Red.png` and `Slime_Yellow.png`. All seven are **320 × 128**, arranged
+as ten columns and four rows of **32 × 32** cells. Alpha inspection confirms:
+
+| Animation | Row | Used columns | Frames |
+| --- | --- | --- | --- |
+| Idle | 0 | 0–5 | 6 |
+| Walk | 1 | 0–5 | 6 |
+| Attack | 2 | 0–8 | 9 |
+| Death | 3 | 0–8 | 9 |
+
+Frame `i` in row `r` is `(32*i, 32*r, 32, 32)`. Trailing cells are transparent
+padding and must not enter the animation loop. Render complete cells into the
+existing 48px square, preserving the fixed center, aspect ratio and original
+transparency. The attack artwork faces left; right-facing attacks mirror that
+same frame horizontally around the destination center. No vertical flip or
+rotation is needed.
+
+The attack still strikes at 0.4 seconds, finishes at 0.8 seconds and observes
+the existing 1.25-second cooldown. Nine attack frames are mapped across that
+duration; the nine death frames play across the existing 0.6-second death
+duration. Frame count changes therefore do not change combat timing. Cosmetic
+color selection is random for each spawn and separate from upgrade randomness.
+Every color shares the same behavior, hitbox, HP, damage and XP rules.
+
+Only PNGs were supplied in this new folder; no timing metadata, creator or
+license document was present. See the separate `slime_v2` credit entry.
+
+## Previous Animated Slime (retained, unused by gameplay)
 
 Files are in `assets/characters/enemies/slime/`. Every frame is **64 × 64**,
 in a horizontal row, and every corresponding `.ase` source specifies **100 ms
@@ -117,10 +158,9 @@ per frame** (10 fps).
 | `sleeping.png` | 320 × 64 | 5 | Unused sleeping animation |
 | `Sleeps.png` | 512 × 64 | 8 | Unused sleep animation |
 
-Preserve the original source for left attacks. Mirror only the attack rendering
-horizontally around the slime's fixed destination center for right attacks.
-Movement continues to use the separate directional walking sheets. Scaling the
-destination down must not change the 64 × 64 source rectangles.
+These previous assets remain unmodified in the repository. Their separate
+directional walking sheets and 64px source rectangles are no longer loaded by
+the game; the current renderer uses the `slime_v2` row layout above.
 
 ## Existing player artwork
 

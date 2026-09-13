@@ -9,6 +9,7 @@ import 'package:flutter_game/game/game_assets.dart';
 import 'package:flutter_game/game/game_screen.dart';
 import 'package:flutter_game/game/game_world.dart';
 import 'package:flutter_game/game/models/player.dart';
+import 'package:flutter_game/game/models/slime_enemy.dart';
 import 'package:flutter_game/game/models/magic_orb.dart';
 import 'package:flutter_game/game/models/upgrade.dart';
 import 'package:flutter_game/game/rendering/game_painter.dart';
@@ -207,6 +208,7 @@ Future<void> _captureSlimeDirections(
     final slime = world.spawnSlimeAt(
       world.player.position + Offset(index == 0 ? 46 : -46, 0),
       spawnDelay: 0,
+      color: SlimeColor.blue,
     );
     slime.update(
       0.401,

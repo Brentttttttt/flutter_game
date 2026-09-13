@@ -24,9 +24,11 @@ class GameWorld {
     EnemySpawner? spawner,
     this.spawningEnabled = true,
     math.Random? random,
+    math.Random? colorRandom,
   }) : arena = arena ?? const Arena(),
        spawner = spawner ?? EnemySpawner(),
-       _random = random ?? math.Random() {
+       _random = random ?? math.Random(),
+       _colorRandom = colorRandom ?? math.Random() {
     final arenaCenter = this.arena.bounds.center;
     player = Player(position: playerPosition ?? arenaCenter, palette: palette);
     orb = MagicOrb();
@@ -38,6 +40,8 @@ class GameWorld {
   final EnemySpawner spawner;
   final bool spawningEnabled;
   final math.Random _random;
+  // Cosmetic choices must not change the sequence of gameplay upgrades.
+  final math.Random _colorRandom;
   late final Player player;
   late final MagicOrb orb;
   late final GameCamera camera;
@@ -77,10 +81,14 @@ class GameWorld {
     int maxHealth = SlimeEnemy.startingHealth,
     int damage = SlimeEnemy.contactDamage,
     double spawnDelay = 0.3,
+    SlimeColor? color,
   }) {
     final slime = SlimeEnemy(
       id: _nextEnemyId++,
       position: arena.clampCircle(position, SlimeEnemy.radius),
+      color:
+          color ??
+          SlimeColor.values[_colorRandom.nextInt(SlimeColor.values.length)],
       maxHealth: maxHealth,
       damage: damage,
       spawnDelayRemaining: spawnDelay,
@@ -123,6 +131,7 @@ class GameWorld {
       final spawnPosition = spawner.update(
         deltaTime: deltaTime,
         survivalTime: survivalTime,
+        playerLevel: player.stats.level,
         arena: arena,
         camera: camera,
         playerPosition: player.position,

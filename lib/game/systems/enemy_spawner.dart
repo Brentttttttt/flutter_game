@@ -5,23 +5,59 @@ import '../models/arena.dart';
 import '../models/game_camera.dart';
 import '../models/slime_enemy.dart';
 
+/// Spawn pressure is separate from enemy combat stats and stays bounded on mobile.
+abstract final class EnemySpawnBalance {
+  static const startingInterval = 2.8;
+  static const minimumInterval = 0.9;
+  static const startingEnemyLimit = 4;
+  static const maximumEnemyLimit = 24;
+  static const secondsPerTimePressure = 150.0;
+  static const secondsPerEnemySlot = 20.0;
+  static const pressurePerLevel = 0.08;
+  static const levelsPerEnemySlot = 2;
+  static const maximumContributingLevels = 12;
+}
+
 class EnemySpawner {
   EnemySpawner({math.Random? random}) : _random = random ?? math.Random();
 
   final math.Random _random;
   double timeUntilNextSpawn = 1;
 
-  double spawnIntervalFor(double survivalTime) {
-    return math.max(0.9, 2.8 / (1 + survivalTime / 150));
+  double spawnIntervalFor(double survivalTime, {int playerLevel = 1}) {
+    final timePressure =
+        math.max(0.0, survivalTime) / EnemySpawnBalance.secondsPerTimePressure;
+    final levelPressure =
+        _levelSteps(playerLevel) * EnemySpawnBalance.pressurePerLevel;
+    return math.max(
+      EnemySpawnBalance.minimumInterval,
+      EnemySpawnBalance.startingInterval / (1 + timePressure + levelPressure),
+    );
   }
 
-  int maximumEnemiesFor(double survivalTime) {
-    return math.min(24, 4 + (survivalTime / 20).floor());
+  int maximumEnemiesFor(double survivalTime, {int playerLevel = 1}) {
+    final timeSlots =
+        (math.max(0.0, survivalTime) / EnemySpawnBalance.secondsPerEnemySlot)
+            .floor();
+    final levelSlots =
+        _levelSteps(playerLevel) ~/ EnemySpawnBalance.levelsPerEnemySlot;
+    return math.min(
+      EnemySpawnBalance.maximumEnemyLimit,
+      EnemySpawnBalance.startingEnemyLimit + timeSlots + levelSlots,
+    );
+  }
+
+  int _levelSteps(int playerLevel) {
+    return (playerLevel - 1).clamp(
+      0,
+      EnemySpawnBalance.maximumContributingLevels,
+    );
   }
 
   Offset? update({
     required double deltaTime,
     required double survivalTime,
+    int playerLevel = 1,
     required Arena arena,
     required GameCamera camera,
     required Offset playerPosition,
@@ -37,7 +73,8 @@ class EnemySpawner {
     }
 
     final visibleEnemies = existingEnemies.where((enemy) => enemy.isVisible);
-    if (visibleEnemies.length >= maximumEnemiesFor(survivalTime)) {
+    if (visibleEnemies.length >=
+        maximumEnemiesFor(survivalTime, playerLevel: playerLevel)) {
       timeUntilNextSpawn = 0.3;
       return null;
     }
@@ -48,9 +85,11 @@ class EnemySpawner {
       playerPosition: playerPosition,
       existingEnemies: visibleEnemies,
     );
+    // Start a fresh interval instead of catching up missed spawns after a slow
+    // frame, a level-up pause, or a full enemy limit. One update adds at most one.
     timeUntilNextSpawn = spawnPosition == null
         ? 0.35
-        : spawnIntervalFor(survivalTime);
+        : spawnIntervalFor(survivalTime, playerLevel: playerLevel);
     return spawnPosition;
   }
 

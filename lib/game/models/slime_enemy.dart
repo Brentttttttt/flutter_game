@@ -6,6 +6,8 @@ import 'health.dart';
 
 enum SlimeFacing { north, south, east, west }
 
+enum SlimeColor { blue, brown, green, grey, orange, red, yellow }
+
 enum SlimeLifeState { active, dying, removed }
 
 enum SlimeActivity { idle, walking, attacking }
@@ -16,6 +18,7 @@ class SlimeEnemy {
   SlimeEnemy({
     required this.id,
     required this.position,
+    this.color = SlimeColor.blue,
     int maxHealth = startingHealth,
     this.damage = contactDamage,
     this.spawnDelayRemaining = 0.3,
@@ -29,18 +32,23 @@ class SlimeEnemy {
   // Larger than this finite arena's diagonal so spawned slimes never become
   // stranded while still occupying the mobile-friendly enemy cap.
   static const double chaseRange = 2500;
-  static const int idleFrameCount = 14;
-  static const int walkFrameCount = 4;
-  static const int attackFrameCount = 8;
-  static const int deathFrameCount = 6;
+  // Every slime_v2 sheet is 320 x 128, with 32 px cells. Rows contain
+  // 6 idle, 6 walk, 9 attack, and 9 death frames; remaining cells are blank.
+  static const double frameSize = 32;
+  static const int idleFrameCount = 6;
+  static const int walkFrameCount = 6;
+  static const int attackFrameCount = 9;
+  static const int deathFrameCount = 9;
   static const double animationFps = 10;
-  static const double deathDuration = deathFrameCount / animationFps;
-  static const double attackDuration = attackFrameCount / animationFps;
-  static const double attackHitTime = 4 / animationFps;
+  // Keep combat timing independent of the replacement artwork's frame count.
+  static const double deathDuration = 0.6;
+  static const double attackDuration = 0.8;
+  static const double attackHitTime = 0.4;
   static const double attackCooldown = 1.25;
   static const double attackReachPadding = 4;
 
   final int id;
+  final SlimeColor color;
   final int damage;
   Offset position;
   final Health health;
@@ -54,6 +62,7 @@ class SlimeEnemy {
   double attackCooldownRemaining = 0;
   double spawnDelayRemaining;
   bool _attackFacesRight = false;
+  bool _facesRight = false;
   bool _attackHitPending = false;
   bool _attackHitConsumed = false;
 
@@ -61,10 +70,33 @@ class SlimeEnemy {
   bool get isVisible => lifeState != SlimeLifeState.removed;
   bool get isDamaged => health.currentHealth < health.maxHealth;
 
-  // Atack.png faces LEFT. Only its current attack is mirrored; directional
-  // walking sheets, idle, and death retain their original orientation.
+  // Native slime_v2 artwork faces LEFT. Lock the attack facing for that swing,
+  // then restore movement/idle facing without moving the sprite's anchor.
   bool get mirrorAttackHorizontally =>
       isActive && activity == SlimeActivity.attacking && _attackFacesRight;
+
+  bool get mirrorHorizontally => isActive && activity == SlimeActivity.attacking
+      ? _attackFacesRight
+      : _facesRight;
+
+  Rect get sourceRect {
+    final row = lifeState == SlimeLifeState.dying
+        ? 3
+        : switch (activity) {
+            SlimeActivity.idle => 0,
+            SlimeActivity.walking => 1,
+            SlimeActivity.attacking => 2,
+          };
+    final frame = lifeState == SlimeLifeState.dying
+        ? deathFrame
+        : animationFrame;
+    return Rect.fromLTWH(
+      frame * frameSize,
+      row * frameSize,
+      frameSize,
+      frameSize,
+    );
+  }
 
   void update(
     double deltaTime, {
@@ -207,7 +239,12 @@ class SlimeEnemy {
       SlimeActivity.walking => walkFrameCount,
       SlimeActivity.attacking => attackFrameCount,
     };
-    final frame = (animationTime * animationFps).floor();
+    final frame =
+        (animationTime *
+                (activity == SlimeActivity.attacking
+                    ? attackFrameCount / attackDuration
+                    : animationFps))
+            .floor();
     return activity == SlimeActivity.attacking
         ? math.min(frameCount - 1, frame)
         : frame % frameCount;
@@ -215,7 +252,7 @@ class SlimeEnemy {
 
   int get deathFrame => math.min(
     deathFrameCount - 1,
-    (deathAnimationTime * animationFps).floor(),
+    (deathAnimationTime / deathDuration * deathFrameCount).floor(),
   );
 
   void _setActivity(SlimeActivity next) {
@@ -228,6 +265,9 @@ class SlimeEnemy {
   void _updateFacing(Offset direction) {
     if (direction.distanceSquared < 0.0001) {
       return;
+    }
+    if (direction.dx.abs() > 0.001) {
+      _facesRight = direction.dx > 0;
     }
     if (direction.dx.abs() > direction.dy.abs()) {
       facing = direction.dx < 0 ? SlimeFacing.west : SlimeFacing.east;

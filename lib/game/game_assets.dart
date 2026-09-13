@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
 
+import 'models/slime_enemy.dart';
+
 class GameAssets {
   GameAssets({
     required this.tiles,
@@ -10,13 +12,7 @@ class GameAssets {
     required this.color1Idle,
     required this.color2Walk,
     required this.color2Idle,
-    required this.slimeIdle,
-    required this.slimeWalkEast,
-    required this.slimeWalkWest,
-    required this.slimeWalkNorth,
-    required this.slimeWalkSouth,
-    required this.slimeAttack,
-    required this.slimeDeath,
+    required this.slimeSheets,
     required this.xpGem,
     required this.levelUp,
     required this.orbImpact,
@@ -34,20 +30,15 @@ class GameAssets {
   static const String color2IdlePath =
       'assets/characters/player_character/color_2/'
       'calicoKitty_curiousIdleBreaker.png';
-  static const String slimeIdlePath =
-      'assets/characters/enemies/slime/Stanby.png';
-  static const String slimeWalkEastPath =
-      'assets/characters/enemies/slime/walk E1.png';
-  static const String slimeWalkWestPath =
-      'assets/characters/enemies/slime/walk w1.png';
-  static const String slimeWalkNorthPath =
-      'assets/characters/enemies/slime/Walk N1.png';
-  static const String slimeWalkSouthPath =
-      'assets/characters/enemies/slime/Walk S1.png';
-  static const String slimeAttackPath =
-      'assets/characters/enemies/slime/Atack.png';
-  static const String slimeDeathPath =
-      'assets/characters/enemies/slime/Death.png';
+  static const slimePaths = <SlimeColor, String>{
+    SlimeColor.blue: 'assets/characters/enemies/slime_v2/Slime_Blue.png',
+    SlimeColor.brown: 'assets/characters/enemies/slime_v2/Slime_Brown.png',
+    SlimeColor.green: 'assets/characters/enemies/slime_v2/Slime_Green.png',
+    SlimeColor.grey: 'assets/characters/enemies/slime_v2/Slime_Grey.png',
+    SlimeColor.orange: 'assets/characters/enemies/slime_v2/Slime_Orange.png',
+    SlimeColor.red: 'assets/characters/enemies/slime_v2/Slime_Red.png',
+    SlimeColor.yellow: 'assets/characters/enemies/slime_v2/Slime_Yellow.png',
+  };
   static const String orbsPath = 'assets/orbs/orbs-sheet.png';
   static const String tilesPath = 'assets/tileset/tiles.png';
   static const xpGemPath = 'assets/xp-gem/xp.png';
@@ -66,13 +57,7 @@ class GameAssets {
   final ui.Image color1Idle;
   final ui.Image color2Walk;
   final ui.Image color2Idle;
-  final ui.Image slimeIdle;
-  final ui.Image slimeWalkEast;
-  final ui.Image slimeWalkWest;
-  final ui.Image slimeWalkNorth;
-  final ui.Image slimeWalkSouth;
-  final ui.Image slimeAttack;
-  final ui.Image slimeDeath;
+  final Map<SlimeColor, ui.Image> slimeSheets;
   final ui.Image xpGem;
   final ui.Image levelUp;
   final ui.Image orbImpact;
@@ -87,13 +72,7 @@ class GameAssets {
       _loadImage(color1IdlePath),
       _loadImage(color2WalkPath),
       _loadImage(color2IdlePath),
-      _loadImage(slimeIdlePath),
-      _loadImage(slimeWalkEastPath),
-      _loadImage(slimeWalkWestPath),
-      _loadImage(slimeWalkNorthPath),
-      _loadImage(slimeWalkSouthPath),
-      _loadImage(slimeAttackPath),
-      _loadImage(slimeDeathPath),
+      for (final color in SlimeColor.values) _loadImage(slimePaths[color]!),
       _loadImage(xpGemPath),
       _loadImage(levelUpPath),
       _loadImage(orbImpactPath),
@@ -108,13 +87,9 @@ class GameAssets {
       color1Idle: images[3],
       color2Walk: images[4],
       color2Idle: images[5],
-      slimeIdle: images[6],
-      slimeWalkEast: images[7],
-      slimeWalkWest: images[8],
-      slimeWalkNorth: images[9],
-      slimeWalkSouth: images[10],
-      slimeAttack: images[11],
-      slimeDeath: images[12],
+      slimeSheets: Map.unmodifiable({
+        for (final color in SlimeColor.values) color: images[6 + color.index],
+      }),
       xpGem: images[13],
       levelUp: images[14],
       orbImpact: images[15],
@@ -145,13 +120,9 @@ class GameAssets {
     color1Idle.dispose();
     color2Walk.dispose();
     color2Idle.dispose();
-    slimeIdle.dispose();
-    slimeWalkEast.dispose();
-    slimeWalkWest.dispose();
-    slimeWalkNorth.dispose();
-    slimeWalkSouth.dispose();
-    slimeAttack.dispose();
-    slimeDeath.dispose();
+    for (final sheet in slimeSheets.values) {
+      sheet.dispose();
+    }
     xpGem.dispose();
     levelUp.dispose();
     orbImpact.dispose();

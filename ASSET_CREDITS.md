@@ -8,7 +8,8 @@ This document records credit; it does **not** grant redistribution rights.
 
 | Pack / asset | Creator | Local files | Use | License evidence |
 | --- | --- | --- | --- | --- |
-| Animated Slime | PixelFranek | `assets/characters/enemies/slime/` (`.png` and `.ase`) | Enemy movement, attack, idle and death | **Needs verification:** no license/readme supplied locally. |
+| Animated Slime | PixelFranek | `assets/characters/enemies/slime/` (`.png` and `.ase`) | Previous enemy artwork, retained in the project | **Needs verification:** no license/readme supplied locally. |
+| Improved slime sprites (`slime_v2`) | Creator not recorded in supplied files | `assets/characters/enemies/slime_v2/Slime_{Blue,Brown,Green,Grey,Orange,Red,Yellow}.png` | Current seven-color enemy idle, walk, attack and death animations | **Needs verification:** creator, original source and license; this folder contains only seven PNGs. |
 | Gems / Coins Free | La Red Games | `assets/xp-gem/xp.png` | Animated green XP gem | **Needs verification:** no license/readme supplied locally. “Free” in the pack name does not establish a license. |
 | Level-Up Effect | Sentient Dream Studio | `assets/level-up-effect/` | One-shot level-up animation | **Needs verification:** no license/readme supplied locally. |
 | [FREE] Pixel Art Impact VFX | Creator not recorded in supplied files | `assets/orbs/orb-hit-effect/` | Purple orb-hit animation; other supplied color variants retained | **Needs verification:** creator, original source and license. |
@@ -21,7 +22,7 @@ This document records credit; it does **not** grant redistribution rights.
 
 ## Local evidence checked
 
-The supplied `assets/` tree contains 1,093 PNG images, nine Aseprite `.ase`
+The supplied `assets/` tree contains 1,100 PNG images, nine Aseprite `.ase`
 sources and one TrueType font. No license, readme, text, HTML or PDF documents
 were included anywhere in that tree. The original root `README.md` was the
 standard Flutter project stub and contained no asset licensing information.
@@ -33,8 +34,8 @@ license URL. Source URLs have therefore not been invented.
 
 Before distributing the game or publishing its source/assets, retain the original
 download-page links and licenses for each pack and replace the unverified entries
-above with the exact terms and any required attribution wording. Keep this
-repository private until asset redistribution permissions are confirmed.
+above with the exact terms and any required attribution wording. Repository
+visibility does not grant licenses or change third-party asset terms.
 
 See [the verified sprite layouts](docs/ASSET_LAYOUTS.md) for source rectangles and
 frame counts. The original supplied artwork remains in place.

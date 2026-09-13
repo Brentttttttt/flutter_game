@@ -131,12 +131,6 @@ class _GameScreenState extends State<GameScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _lifecycleState = state;
-    if (state == AppLifecycleState.resumed) {
-      _lastElapsed = null;
-      _syncTicker();
-      return;
-    }
-
     _world.setMovementInput(Offset.zero);
     if (mounted) {
       setState(() => _joystickGeneration++);
@@ -147,6 +141,7 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
+    _world.setMovementInput(Offset.zero);
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     _repaint.dispose();
@@ -178,23 +173,22 @@ class _GameScreenState extends State<GameScreen>
                   ValueListenableBuilder<int>(
                     valueListenable: _repaint,
                     builder: (context, value, child) {
-                      return GameHud(world: _world);
-                    },
-                  ),
-                  ValueListenableBuilder<int>(
-                    valueListenable: _repaint,
-                    builder: (context, value, child) {
-                      if (!_world.isPlaying) {
+                      if (!_world.isPlaying ||
+                          _lifecycleState != AppLifecycleState.resumed) {
                         return const SizedBox.shrink();
                       }
-                      return Positioned(
-                        left: 14,
-                        bottom: 14,
+                      return Positioned.fill(
                         child: VirtualJoystick(
                           key: ValueKey(_joystickGeneration),
                           onChanged: _world.setMovementInput,
                         ),
                       );
+                    },
+                  ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: _repaint,
+                    builder: (context, value, child) {
+                      return GameHud(world: _world);
                     },
                   ),
                   ValueListenableBuilder<int>(

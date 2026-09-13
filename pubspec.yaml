@@ -20,13 +20,7 @@ flutter:
   assets:
     - assets/characters/player_character/color_1/
     - assets/characters/player_character/color_2/
-    - "assets/characters/enemies/slime/Stanby.png"
-    - "assets/characters/enemies/slime/walk E1.png"
-    - "assets/characters/enemies/slime/walk w1.png"
-    - "assets/characters/enemies/slime/Walk N1.png"
-    - "assets/characters/enemies/slime/Walk S1.png"
-    - "assets/characters/enemies/slime/Atack.png"
-    - "assets/characters/enemies/slime/Death.png"
+    - assets/characters/enemies/slime_v2/
     - assets/orbs/orbs-sheet.png
     - assets/tileset/
     - assets/xp-gem/xp.png
