@@ -14,7 +14,7 @@ Tap PLAY, choose the existing kitty color, and drag the lower-left joystick. Arc
 - Fire Orb has five levels: unlock, +20% base projectile damage, -15% cooldown, one extra pierced enemy, +8 damage. Projectiles use swept collision and expire at 400px or two seconds.
 - Combat, spawning, collection and survival time freeze during level-up/selection. App backgrounding stops the single ticker; selection and game-over screens keep it stopped.
 
-Starting stats, weapon progression and visual budgets live in `lib/game/models/player_stats.dart`. Upgrade definitions/icons are in `lib/game/models/upgrade.dart`. Spawning begins gently with four active enemies, grows by one every 20 seconds to a cap of 24, and gradually shortens its interval. Effects, labels and projectiles are capped; persistent XP is culled only from offscreen drawing, never deleted for age.
+Starting stats, weapon progression and visual budgets live in `lib/game/models/player_stats.dart`. Upgrade definitions/icons are in `lib/game/models/upgrade.dart`. Slimes spawned in the first 30 seconds have 20 HP and deal 6 damage; later spawns have 30 HP and deal 10 damage. Spawning begins gently with four active enemies, grows by one every 20 seconds to a cap of 24, and gradually shortens its interval. Effects, labels and projectiles are capped; persistent XP is culled only from offscreen drawing, never deleted for age.
 
 ## Develop and build
 

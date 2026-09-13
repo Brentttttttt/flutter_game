@@ -17,6 +17,7 @@ class SlimeEnemy {
     required this.id,
     required this.position,
     int maxHealth = startingHealth,
+    this.damage = contactDamage,
     this.spawnDelayRemaining = 0.3,
   }) : health = Health(maxHealth);
 
@@ -40,6 +41,7 @@ class SlimeEnemy {
   static const double attackReachPadding = 4;
 
   final int id;
+  final int damage;
   Offset position;
   final Health health;
   SlimeFacing facing = SlimeFacing.south;

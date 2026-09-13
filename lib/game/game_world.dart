@@ -75,12 +75,14 @@ class GameWorld {
   SlimeEnemy spawnSlimeAt(
     Offset position, {
     int maxHealth = SlimeEnemy.startingHealth,
+    int damage = SlimeEnemy.contactDamage,
     double spawnDelay = 0.3,
   }) {
     final slime = SlimeEnemy(
       id: _nextEnemyId++,
       position: arena.clampCircle(position, SlimeEnemy.radius),
       maxHealth: maxHealth,
+      damage: damage,
       spawnDelayRemaining: spawnDelay,
     );
     enemies.add(slime);
@@ -127,7 +129,16 @@ class GameWorld {
         existingEnemies: enemies,
       );
       if (spawnPosition != null) {
-        spawnSlimeAt(spawnPosition);
+        final isOpening = survivalTime < GameBalance.openingGraceDuration;
+        spawnSlimeAt(
+          spawnPosition,
+          maxHealth: isOpening
+              ? GameBalance.openingSlimeHealth
+              : SlimeEnemy.startingHealth,
+          damage: isOpening
+              ? GameBalance.openingSlimeDamage
+              : SlimeEnemy.contactDamage,
+        );
       }
     }
 
@@ -264,7 +275,7 @@ class GameWorld {
         playerPosition: player.position,
         playerRadius: Player.radius,
       )) {
-        player.takeDamage(SlimeEnemy.contactDamage);
+        player.takeDamage(enemy.damage);
       }
     }
   }

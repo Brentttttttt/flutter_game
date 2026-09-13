@@ -15,6 +15,9 @@ abstract final class GameBalance {
   static const maximumDamageNumbers = 40;
   static const maximumProjectiles = 32;
   static const levelUpDuration = 1.0;
+  static const openingGraceDuration = 30.0;
+  static const openingSlimeHealth = 20;
+  static const openingSlimeDamage = 6;
 }
 
 class PlayerStats {

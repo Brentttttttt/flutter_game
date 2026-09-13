@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter_game/game/game_world.dart';
 import 'package:flutter_game/game/models/arena.dart';
@@ -50,6 +51,18 @@ void _startStationaryAttack(SlimeEnemy slime) {
 }
 
 void main() {
+  test('automatic opening spawns are gentler than later slimes', () {
+    for (final elapsed in [0.0, 31.0]) {
+      final world = GameWorld(random: math.Random(4));
+      world.setViewport(const Size(390, 780));
+      world.survivalTime = elapsed;
+      world.spawner.timeUntilNextSpawn = 0;
+      world.update(0.01);
+      final slime = world.enemies.single;
+      expect(slime.health.maxHealth, elapsed == 0 ? 20 : 30);
+      expect(slime.damage, elapsed == 0 ? 6 : 10);
+    }
+  });
   group('XP pickups and level transitions', () {
     test(
       'one defeated slime drops one permanent gem at its death position',
