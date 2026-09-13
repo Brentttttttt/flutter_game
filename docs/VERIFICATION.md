@@ -8,7 +8,7 @@ Verified locally on 2026-09-13 with Flutter 3.44.6 / Dart 3.12.2.
 - `flutter test`: all 48 tests pass. The final updated visual flow test also passed independently.
 - `flutter build apk --release`: successful, approximately 42.8 MB. Normal output remains `build/app/outputs/flutter-apk/app-release.apk`; readable copy is `witch_kitty.apk` in the same directory.
 - APK manifest inspection reports application label `Witch Kitty`, existing identifier `com.example.flutter_game`, and the configured adaptive launcher icon. Decoded packaged launcher/foreground PNG pixels match the new source resources exactly. All 12 selected new gameplay images are in the APK.
-- APK installed and its main activity opened on the Pixel 3 API 33 Android emulator. This host's software-rendered emulator suffered an Android System UI ANR during startup; the deterministic gameplay and visual flow checks below ran in Flutter's rendering/test engine. A physical-device play session remains useful for touch feel and device-specific performance.
+- APK installed on the Pixel 3 API 33 Android emulator. Visually verified the custom icon and `Witch Kitty` label in its app drawer, opened the game from that icon, and used PLAY and color selection. The host's software-rendered emulator initially suffered an Android System UI ANR, then recovered after reducing its display load. Deterministic gameplay and visual flow checks below ran in Flutter's rendering/test engine. A physical-device play session remains useful for touch feel and device-specific performance.
 
 ## Gameplay coverage
 
