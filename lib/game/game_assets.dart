@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 
 import 'models/slime_enemy.dart';
+import 'models/dino_tri.dart';
 
 class GameAssets {
   GameAssets({
@@ -18,6 +19,7 @@ class GameAssets {
     required this.orbImpact,
     required this.fireShot,
     required this.fireExplosion,
+    required this.dinoSheets,
   });
 
   static const String color1WalkPath =
@@ -50,6 +52,22 @@ class GameAssets {
       'assets/orbs/fire-orb-projectile/ShotLoop-Sheet.png';
   static const fireExplosionPath =
       'assets/orbs/fire-orb-projectile/Explode-Sheet.png';
+  static const dinoPaths = <DinoAnimation, String>{
+    DinoAnimation.idle: 'assets/characters/enemies/boss_dino/dino_tri_idle.png',
+    DinoAnimation.move: 'assets/characters/enemies/boss_dino/dino_tri_move.png',
+    DinoAnimation.sitStart:
+        'assets/characters/enemies/boss_dino/dino_tri_sit_1_start.png',
+    DinoAnimation.sitLoop:
+        'assets/characters/enemies/boss_dino/dino_tri_sit_2_loop.png',
+    DinoAnimation.sitEnd:
+        'assets/characters/enemies/boss_dino/dino_tri_sit_3_end.png',
+    DinoAnimation.thought:
+        'assets/characters/enemies/boss_dino/dino_tri_thought.png',
+    DinoAnimation.attackA:
+        'assets/characters/enemies/boss_dino/dino_tri_attack_A.png',
+    DinoAnimation.attackB:
+        'assets/characters/enemies/boss_dino/dino_tri_attack_B.png',
+  };
 
   final ui.Image tiles;
   final ui.Image orbs;
@@ -63,6 +81,7 @@ class GameAssets {
   final ui.Image orbImpact;
   final ui.Image fireShot;
   final ui.Image fireExplosion;
+  final Map<DinoAnimation, ui.Image> dinoSheets;
 
   static Future<GameAssets> load() async {
     final images = await Future.wait<ui.Image>([
@@ -78,6 +97,8 @@ class GameAssets {
       _loadImage(orbImpactPath),
       _loadImage(fireShotPath),
       _loadImage(fireExplosionPath),
+      for (final animation in DinoAnimation.values)
+        _loadImage(dinoPaths[animation]!),
     ], cleanUp: (image) => image.dispose());
 
     return GameAssets(
@@ -95,6 +116,10 @@ class GameAssets {
       orbImpact: images[15],
       fireShot: images[16],
       fireExplosion: images[17],
+      dinoSheets: Map.unmodifiable({
+        for (final animation in DinoAnimation.values)
+          animation: images[18 + animation.index],
+      }),
     );
   }
 
@@ -128,5 +153,8 @@ class GameAssets {
     orbImpact.dispose();
     fireShot.dispose();
     fireExplosion.dispose();
+    for (final sheet in dinoSheets.values) {
+      sheet.dispose();
+    }
   }
 }

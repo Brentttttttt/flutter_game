@@ -1,6 +1,66 @@
 # Verification
 
-Verified locally on 2026-09-13 with Flutter 3.44.6 / Dart 3.12.2.
+## Endless-mode update — 2026-09-14
+
+Flutter 3.44.6 / Dart 3.12.2. `flutter analyze` reports no issues and
+`flutter test` passes all **97** unit, widget and rendering tests. Formatting is
+clean. `flutter pub get` and `flutter pub outdated` succeed; direct dependencies
+are current and remaining transitive versions are constrained by this SDK.
+
+The new tests cover five-minute scheduling, a six-second warning, no overlapping
+bosses, paused milestone timers, both weapons damaging Dino Tri, telegraphed
+one-hit attacks and dodging, the half-HP enraged phase, stronger later bosses,
+boss defeat awarding XP while the same run continues, gradual slime recovery,
+bounded later spawn pressure, low-health sound hysteresis and full retry reset.
+Audio tests cover exact WAV mappings/headers, fades, stale transition cancellation,
+native-backend failure handling, bounded/throttled sound requests, pause/UI sound
+behavior, independent volume/mute controls and persisted settings. Both cosmetic
+attires and menu/selection meows remain covered by widget tests.
+
+All eight Dino sheets are decoded and checked against their 384 × 128 frame
+layout. Reviewed the real rendered poses in both directions, including green/red
+attack effects and the Thought splash. The body stays upright and fixed around
+its authored ground origin. Updated UI captures show readable portrait sound
+settings, boss warning, boss health/enrage and boss counts on Game Over.
+
+The Android integration test **passes** on the Pixel 3 API 33 emulator, using
+the real native audio backend and production widgets/world. It advances survival
+time and arranges encounters **only inside
+the test**, so a complete recurring-boss check does not require ten minutes of
+manual play. Production entry points have no debug shortcuts or altered timers.
+Reviewed rendering-test captures live under ignored `build/verification/`.
+The native test also exercises PNG rendering into its private temporary directory
+without storage permissions; Flutter removes that test installation on exit.
+
+Native coverage includes all five actual BGM files, menu/attire meows, successful
+Arcane and Fire hits, boss warning/music transitions requested by the real UI,
+boss HP/enrage, player damage, boss XP with no victory/end-of-run transition,
+a stronger second encounter, death statistics, retry, pause/settings/resume, and
+error-free audio shutdown. Playback-position polling is disabled because no game
+UI consumes it; native resource disposal can be awaited. A physical-device check
+remains useful for speaker balance and touch feel.
+
+The original emulator had insufficient free space for the audio-bearing debug
+APK. Native verification used a separate fresh data image under ignored `build/`
+without removing unrelated apps or wiping the original emulator's data.
+
+`tool/build_release.ps1` successfully built the production `lib/main.dart` APK:
+**161,255,906 bytes (153.8 MiB)**, including the supplied uncompressed WAV music.
+`app-release.apk` and `witch_kitty.apk` in `build/app/outputs/flutter-apk/` have
+identical SHA-256 `1716311D3068A0F4A2822C6072A23DAC5944CCEC17BEC2141EF96C212CE89122`.
+APK inspection confirms exactly five BGM tracks, twelve SFX files, all eight Dino
+sheets and all seven `slime_v2` sheets, with zero legacy slime sheets. The label
+is `Witch Kitty`, the adaptive icon resolves correctly, and the existing technical
+identifier and development signing configuration are preserved.
+
+Installed and opened this release APK, inspected the real launcher icon/name,
+menu, both attire choices and a fresh purple-attire arena with colored slimes.
+Release logs show no Flutter or AndroidRuntime errors. Native screenshots are in
+ignored `build/verification/android/release_*.png`.
+
+## Previous progression and slime release — 2026-09-13
+
+Verified locally with Flutter 3.44.6 / Dart 3.12.2.
 
 - `flutter doctor -v`: Android toolchain available; no issues.
 - `flutter pub get` and `flutter pub outdated`: all directly resolvable dependencies current. Newer transitive releases are constrained by the installed Flutter SDK; no forced upgrades.

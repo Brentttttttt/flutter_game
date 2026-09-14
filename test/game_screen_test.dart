@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_game/audio/game_audio_controller.dart';
 import 'package:flutter_game/game/game_assets.dart';
 import 'package:flutter_game/game/game_screen.dart';
 import 'package:flutter_game/game/game_world.dart';
@@ -15,7 +16,9 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 780));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const WitchKittyApp());
+    final audio = GameAudioController.silent();
+    addTearDown(audio.dispose);
+    await tester.pumpWidget(WitchKittyApp(audio: audio));
     await _waitFor(tester, find.byKey(const Key('play_button')));
 
     expect(find.byKey(const Key('exit_button')), findsOneWidget);

@@ -72,6 +72,15 @@ class GameOverOverlay extends StatelessWidget {
                         fontSize: 17,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'BOSSES DEFEATED  ${world.bossesDefeated}',
+                      key: const Key('bosses_defeated_text'),
+                      style: const TextStyle(
+                        color: Color(0xFFFFB57A),
+                        fontSize: 17,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     PixelButton(
                       key: const Key('retry_button'),

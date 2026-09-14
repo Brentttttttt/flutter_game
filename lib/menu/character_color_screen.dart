@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../audio/game_audio_controller.dart';
 import '../game/game_assets.dart';
+import '../game/models/game_sound.dart';
 import '../game/models/player.dart';
 import '../ui/pixel_widgets.dart';
 import 'menu_scene.dart';
@@ -10,12 +12,14 @@ class CharacterColorScreen extends StatefulWidget {
     required this.assets,
     required this.onSelected,
     required this.onBack,
+    this.audio,
     super.key,
   });
 
   final GameAssets assets;
   final ValueChanged<PlayerPalette> onSelected;
   final VoidCallback onBack;
+  final GameAudioController? audio;
 
   @override
   State<CharacterColorScreen> createState() => _CharacterColorScreenState();
@@ -62,7 +66,10 @@ class _CharacterColorScreenState extends State<CharacterColorScreen>
                       width: 108,
                       height: 42,
                       primary: false,
-                      onPressed: widget.onBack,
+                      onPressed: () {
+                        widget.audio?.play(GameSound.cancel);
+                        widget.onBack();
+                      },
                     ),
                   ),
                   Center(
@@ -77,7 +84,7 @@ class _CharacterColorScreenState extends State<CharacterColorScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'CHOOSE YOUR KITTY',
+                            'WITCH KITTY SELECT',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: const Color(0xFFFFFFC2),
@@ -94,11 +101,19 @@ class _CharacterColorScreenState extends State<CharacterColorScreen>
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'TAP A COLOR TO BEGIN',
+                            'CHOOSE YOUR ATTIRE',
                             style: TextStyle(
                               color: Color(0xFFB8C870),
                               fontSize: 14,
                               letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          const Text(
+                            'SAME KITTY. SAME MAGIC.',
+                            style: TextStyle(
+                              color: Color(0xFFC5BADE),
+                              fontSize: 12,
                             ),
                           ),
                           SizedBox(height: compact ? 14 : 26),
@@ -109,25 +124,23 @@ class _CharacterColorScreenState extends State<CharacterColorScreen>
                             children: [
                               _ColorChoice(
                                 choiceKey: const Key('color_1_choice'),
-                                label: 'WITCH',
-                                subtitle: 'PURPLE',
+                                label: 'PURPLE',
+                                subtitle: 'MOONLIT ATTIRE',
                                 assets: widget.assets,
                                 palette: PlayerPalette.color1,
                                 animation: _animation,
                                 spriteSize: spriteSize,
-                                onTap: () =>
-                                    widget.onSelected(PlayerPalette.color1),
+                                onTap: () => _select(PlayerPalette.color1),
                               ),
                               _ColorChoice(
                                 choiceKey: const Key('color_2_choice'),
-                                label: 'CALICO',
-                                subtitle: 'FOREST',
+                                label: 'FOREST',
+                                subtitle: 'FOREST ATTIRE',
                                 assets: widget.assets,
                                 palette: PlayerPalette.color2,
                                 animation: _animation,
                                 spriteSize: spriteSize,
-                                onTap: () =>
-                                    widget.onSelected(PlayerPalette.color2),
+                                onTap: () => _select(PlayerPalette.color2),
                               ),
                             ],
                           ),
@@ -142,6 +155,11 @@ class _CharacterColorScreenState extends State<CharacterColorScreen>
         ),
       ),
     );
+  }
+
+  void _select(PlayerPalette palette) {
+    widget.audio?.play(GameSound.meow);
+    widget.onSelected(palette);
   }
 }
 
@@ -170,7 +188,7 @@ class _ColorChoice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '$label kitty color',
+      label: '$label Witch Kitty attire, cosmetic choice',
       child: GestureDetector(
         key: choiceKey,
         behavior: HitTestBehavior.opaque,

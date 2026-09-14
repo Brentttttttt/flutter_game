@@ -12,6 +12,9 @@ import 'models/upgrade.dart';
 import 'models/xp_gem.dart';
 import 'models/combat_effect.dart';
 import 'models/fire_projectile.dart';
+import 'models/dino_tri.dart';
+import 'models/endless_balance.dart';
+import 'models/game_sound.dart';
 import 'systems/enemy_spawner.dart';
 
 enum GameRunState { playing, levelUpEffect, choosingUpgrade, gameOver }
@@ -51,6 +54,15 @@ class GameWorld {
   final List<CombatEffect> effects = [];
   final List<DamageNumber> damageNumbers = [];
   final List<FireProjectile> projectiles = [];
+  DinoTri? boss;
+  int bossesDefeated = 0;
+  int bossEncounters = 0;
+  double nextBossTime = EndlessBalance.bossInterval;
+  double bossWarningRemaining = 0;
+  double _spawnRecoveryRemaining = 0;
+  int _pendingBossXp = 0;
+  bool _lowHealthLatched = false;
+  final List<GameSound> _soundEvents = [];
   List<UpgradeDefinition> upgradeChoices = const [];
   double levelUpEffectTime = 0;
   double _fireCooldownRemaining = 0;
@@ -63,6 +75,19 @@ class GameWorld {
   bool get isGameOver => runState == GameRunState.gameOver;
   bool get isPlaying => runState == GameRunState.playing;
   bool get isChoosingUpgrade => runState == GameRunState.choosingUpgrade;
+  bool get isBossWarning => bossWarningRemaining > 0;
+
+  List<GameSound> drainSoundEvents() {
+    final result = List<GameSound>.of(_soundEvents);
+    _soundEvents.clear();
+    return result;
+  }
+
+  void _sound(GameSound sound) {
+    if (_soundEvents.length < EndlessBalance.maximumQueuedSounds) {
+      _soundEvents.add(sound);
+    }
+  }
 
   void setViewport(Size size) {
     camera.setViewport(size, arena, player.position);
@@ -117,6 +142,7 @@ class GameWorld {
     }
 
     survivalTime += deltaTime;
+    _updateBossEncounter(deltaTime);
     player.update(deltaTime);
     _movePlayer(deltaTime);
     for (final orbitingOrb in orbs) {
@@ -127,11 +153,12 @@ class GameWorld {
     }
     _updateEffects(deltaTime);
 
-    if (spawningEnabled) {
+    if (spawningEnabled && !isBossWarning && !(boss?.isActive ?? false)) {
       final spawnPosition = spawner.update(
-        deltaTime: deltaTime,
+        deltaTime: deltaTime * _slimeSpawnPace,
         survivalTime: survivalTime,
         playerLevel: player.stats.level,
+        bossesDefeated: bossesDefeated,
         arena: arena,
         camera: camera,
         playerPosition: player.position,
@@ -164,6 +191,24 @@ class GameWorld {
 
     _separateSlimes();
     _applyAttackDamage();
+    final currentBoss = boss;
+    if (currentBoss != null) {
+      final previousAttack = currentBoss.attackSequence;
+      currentBoss.update(
+        deltaTime,
+        playerPosition: player.position,
+        playerRadius: Player.radius,
+        arena: arena,
+      );
+      if (currentBoss.attackSequence != previousAttack) {
+        _sound(GameSound.bossAttack);
+      }
+      final damage = currentBoss.consumeAttackHit(
+        playerPosition: player.position,
+        playerRadius: Player.radius,
+      );
+      if (damage > 0) _damagePlayer(damage);
+    }
     if (player.isDead) {
       _finishRun();
       camera.update(deltaTime, player.position, arena);
@@ -186,10 +231,40 @@ class GameWorld {
           _recordHit(enemy, result, player.stats.roundedOrbDamage, contact);
         }
       }
+      final target = boss;
+      if (target != null &&
+          target.isActive &&
+          circlesOverlap(
+            orbitingOrb.positionAround(player.position),
+            MagicOrb.radius,
+            target.position,
+            DinoTri.radius,
+          )) {
+        final result = target.takeOrbHit(
+          player.stats.roundedOrbDamage,
+          MagicOrb.hitCooldown,
+        );
+        if (result != SlimeDamageResult.none) {
+          _recordBossHit(
+            target,
+            result,
+            player.stats.roundedOrbDamage,
+            Offset.lerp(
+              orbitingOrb.positionAround(player.position),
+              target.position,
+              0.5,
+            )!,
+          );
+        }
+      }
     }
     _updateFireWeapon(deltaTime);
     _updateProjectiles(deltaTime);
     _collectXp(deltaTime);
+    if (player.health.ratio > EndlessBalance.lowHealthResetThreshold) {
+      _lowHealthLatched = false;
+    }
+    if (boss != null && !boss!.isVisible) boss = null;
 
     enemies.removeWhere((enemy) => enemy.lifeState == SlimeLifeState.removed);
     camera.update(deltaTime, player.position, arena);
@@ -223,6 +298,19 @@ class GameWorld {
   }
 
   bool _movesDeeperIntoEnemy(Offset current, Offset candidate) {
+    final target = boss;
+    if (target != null &&
+        target.isActive &&
+        circlesOverlap(
+          candidate,
+          Player.radius,
+          target.position,
+          DinoTri.radius,
+        ) &&
+        (candidate - target.position).distanceSquared <
+            (current - target.position).distanceSquared) {
+      return true;
+    }
     for (final enemy in enemies.where((enemy) => enemy.isActive)) {
       if (!circlesOverlap(
         candidate,
@@ -284,7 +372,7 @@ class GameWorld {
         playerPosition: player.position,
         playerRadius: Player.radius,
       )) {
-        player.takeDamage(enemy.damage);
+        _damagePlayer(enemy.damage);
       }
     }
   }
@@ -296,6 +384,22 @@ class GameWorld {
     Offset contact, {
     bool isFire = false,
   }) {
+    _hitFeedback(enemy.position, damage, contact, isFire: isFire);
+    if (result == SlimeDamageResult.defeated) {
+      defeatedEnemies++;
+      xpGems.add(
+        XpGem(position: enemy.position, value: GameBalance.xpPerSlime),
+      );
+    }
+  }
+
+  void _hitFeedback(
+    Offset targetPosition,
+    int damage,
+    Offset contact, {
+    bool isFire = false,
+  }) {
+    _sound(isFire ? GameSound.fireHit : GameSound.arcaneHit);
     if (effects.length >= GameBalance.maximumEffects) effects.removeAt(0);
     effects.add(
       CombatEffect(
@@ -306,13 +410,7 @@ class GameWorld {
     if (damageNumbers.length >= GameBalance.maximumDamageNumbers) {
       damageNumbers.removeAt(0);
     }
-    damageNumbers.add(DamageNumber(enemy.position, damage, isFire: isFire));
-    if (result == SlimeDamageResult.defeated) {
-      defeatedEnemies++;
-      xpGems.add(
-        XpGem(position: enemy.position, value: GameBalance.xpPerSlime),
-      );
-    }
+    damageNumbers.add(DamageNumber(targetPosition, damage, isFire: isFire));
   }
 
   void _updateEffects(double dt) {
@@ -327,7 +425,8 @@ class GameWorld {
   }
 
   void _collectXp(double dt) {
-    var collectedXp = 0;
+    var collectedXp = _pendingBossXp;
+    _pendingBossXp = 0;
     xpGems.removeWhere((gem) {
       if (!gem.update(dt, player.position, player.stats.xpPickupRadius)) {
         return false;
@@ -346,6 +445,7 @@ class GameWorld {
 
   void _beginLevelUpIfReady() {
     if (!player.stats.advanceLevelIfReady()) return;
+    _sound(GameSound.powerUp);
     player.setMovementInput(Offset.zero);
     levelUpEffectTime = 0;
     final available = UpgradeDefinition.availableFor(player.stats)
@@ -359,6 +459,9 @@ class GameWorld {
     final matching = upgradeChoices.where((upgrade) => upgrade.id == id);
     if (matching.isEmpty) return false;
     matching.single.apply(player.stats);
+    if (player.health.ratio > EndlessBalance.lowHealthResetThreshold) {
+      _lowHealthLatched = false;
+    }
     upgradeChoices = const [];
     _syncOrbs();
     runState = GameRunState.playing;
@@ -399,18 +502,24 @@ class GameWorld {
     }
     final fireOrb = orbs.firstWhere((orb) => orb.kind == OrbKind.fire);
     final origin = fireOrb.positionAround(player.position);
-    SlimeEnemy? target;
+    Offset? target;
     var nearest = FireOrbStats.targetingRange * FireOrbStats.targetingRange;
     for (final enemy in enemies) {
       if (!enemy.isActive || enemy.spawnDelayRemaining > 0) continue;
       final distance = (enemy.position - origin).distanceSquared;
       if (distance < nearest) {
         nearest = distance;
-        target = enemy;
+        target = enemy.position;
       }
     }
+    final currentBoss = boss;
+    if (currentBoss != null &&
+        currentBoss.isActive &&
+        (currentBoss.position - origin).distanceSquared < nearest) {
+      target = currentBoss.position;
+    }
     if (target == null) return;
-    final delta = target.position - origin;
+    final delta = target - origin;
     final direction = delta.distance < 0.001
         ? const Offset(0, -1)
         : delta / delta.distance;
@@ -423,13 +532,14 @@ class GameWorld {
       ),
     );
     _fireCooldownRemaining = player.stats.fireOrb.cooldown;
+    _sound(GameSound.fireShot);
   }
 
   void _updateProjectiles(double dt) {
     for (final projectile in projectiles) {
       if (projectile.isFinished) continue;
       projectile.update(dt);
-      final hits = <({SlimeEnemy enemy, double time})>[];
+      final hits = <({SlimeEnemy? slime, DinoTri? boss, double time})>[];
       for (final enemy in enemies) {
         if (!enemy.isActive ||
             enemy.spawnDelayRemaining > 0 ||
@@ -442,24 +552,157 @@ class GameWorld {
           enemy.position,
           SlimeEnemy.radius + FireOrbStats.projectileRadius,
         );
-        if (hitTime != null) hits.add((enemy: enemy, time: hitTime));
+        if (hitTime != null) {
+          hits.add((slime: enemy, boss: null, time: hitTime));
+        }
+      }
+      final target = boss;
+      if (target != null &&
+          target.isActive &&
+          !projectile.hitEnemyIds.contains(target.id)) {
+        final hitTime = segmentCircleHitTime(
+          projectile.previousPosition,
+          projectile.position,
+          target.position,
+          DinoTri.radius + FireOrbStats.projectileRadius,
+        );
+        if (hitTime != null) {
+          hits.add((slime: null, boss: target, time: hitTime));
+        }
       }
       hits.sort((a, b) => a.time.compareTo(b.time));
       for (final hit in hits) {
-        final result = hit.enemy.takeProjectileHit(projectile.damage);
+        final result = hit.slime != null
+            ? hit.slime!.takeProjectileHit(projectile.damage)
+            : hit.boss!.takeProjectileHit(projectile.damage);
         if (result == SlimeDamageResult.none) continue;
-        projectile.hitEnemyIds.add(hit.enemy.id);
+        projectile.hitEnemyIds.add(hit.slime?.id ?? hit.boss!.id);
         final contact = Offset.lerp(
           projectile.previousPosition,
           projectile.position,
           hit.time,
         )!;
-        _recordHit(hit.enemy, result, projectile.damage, contact, isFire: true);
+        if (hit.slime != null) {
+          _recordHit(
+            hit.slime!,
+            result,
+            projectile.damage,
+            contact,
+            isFire: true,
+          );
+        } else {
+          _recordBossHit(
+            hit.boss!,
+            result,
+            projectile.damage,
+            contact,
+            isFire: true,
+          );
+        }
         projectile.hitsRemaining--;
         if (projectile.hitsRemaining <= 0) break;
       }
     }
     projectiles.removeWhere((projectile) => projectile.isFinished);
+  }
+
+  double get _slimeSpawnPace {
+    final untilBoss = nextBossTime - survivalTime;
+    final windDown = (untilBoss / EndlessBalance.spawnWindDownDuration).clamp(
+      0.15,
+      1.0,
+    );
+    final recovery =
+        (1 - _spawnRecoveryRemaining / EndlessBalance.spawnRecoveryDuration)
+            .clamp(0.2, 1.0);
+    return math.min(windDown, recovery);
+  }
+
+  void _updateBossEncounter(double dt) {
+    _spawnRecoveryRemaining = math.max(0, _spawnRecoveryRemaining - dt);
+    if (isBossWarning) {
+      bossWarningRemaining = math.max(0, bossWarningRemaining - dt);
+      if (!isBossWarning) {
+        bossEncounters++;
+        boss = DinoTri(
+          id: -bossEncounters,
+          position: _bossSpawnPosition(),
+          encounterNumber: math.max(
+            bossEncounters,
+            (survivalTime / EndlessBalance.bossInterval).floor(),
+          ),
+        );
+      }
+      return;
+    }
+    if (boss != null || survivalTime < nextBossTime) return;
+    bossWarningRemaining = EndlessBalance.warningDuration;
+    // Only one boss exists at a time. Long encounters skip missed milestones;
+    // they never accumulate bosses to spawn simultaneously afterward.
+    nextBossTime =
+        ((survivalTime / EndlessBalance.bossInterval).floor() + 1) *
+        EndlessBalance.bossInterval;
+    _sound(GameSound.bossWarning);
+  }
+
+  Offset _bossSpawnPosition() {
+    final distance = math.max(
+      260.0,
+      camera.viewportSize.shortestSide / 2 + 100,
+    );
+    var best = arena.bounds.center;
+    var bestDistance = -1.0;
+    for (var side = 0; side < 8; side++) {
+      final angle = side * math.pi / 4;
+      final candidate = arena.clampCircle(
+        player.position + Offset(math.cos(angle), math.sin(angle)) * distance,
+        DinoTri.radius,
+      );
+      final away = (candidate - player.position).distanceSquared;
+      if (away > bestDistance) {
+        best = candidate;
+        bestDistance = away;
+      }
+    }
+    return best;
+  }
+
+  void _damagePlayer(int damage) {
+    if (!player.takeDamage(damage)) return;
+    _sound(GameSound.hurt);
+    if (!player.isDead &&
+        !_lowHealthLatched &&
+        player.health.ratio <= EndlessBalance.lowHealthThreshold) {
+      _lowHealthLatched = true;
+      _sound(GameSound.lowHealth);
+    }
+  }
+
+  void _recordBossHit(
+    DinoTri target,
+    SlimeDamageResult result,
+    int damage,
+    Offset contact, {
+    bool isFire = false,
+  }) {
+    _hitFeedback(target.position, damage, contact, isFire: isFire);
+    if (result != SlimeDamageResult.defeated) return;
+    bossesDefeated++;
+    _sound(GameSound.bossDefeated);
+    _pendingBossXp += math.max(
+      80 + 40 * target.encounterNumber,
+      player.stats.xpRequired,
+    );
+    _spawnRecoveryRemaining = EndlessBalance.spawnRecoveryDuration;
+    spawner.timeUntilNextSpawn = 1;
+    final earliestNext = survivalTime + EndlessBalance.minimumBossRecovery;
+    if (nextBossTime < earliestNext) {
+      nextBossTime =
+          (earliestNext / EndlessBalance.bossInterval).ceil() *
+          EndlessBalance.bossInterval;
+    }
+    // Defeat preserves the same arena, player, timer, weapons, gems and kills.
+    // The reward joins ordinary collected XP at the end of this update.
   }
 
   void _finishRun() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'audio/game_audio_controller.dart';
 import 'game/game_assets.dart';
 import 'game/game_screen.dart';
 import 'game/models/player.dart';
@@ -12,7 +13,9 @@ void main() {
 }
 
 class WitchKittyApp extends StatelessWidget {
-  const WitchKittyApp({super.key});
+  const WitchKittyApp({this.audio, super.key});
+
+  final GameAudioController? audio;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +31,7 @@ class WitchKittyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const GameFlow(),
+      home: GameFlow(audio: audio),
     );
   }
 }
@@ -36,13 +39,16 @@ class WitchKittyApp extends StatelessWidget {
 enum _AppStage { mainMenu, colorChoice, game }
 
 class GameFlow extends StatefulWidget {
-  const GameFlow({super.key});
+  const GameFlow({this.audio, super.key});
+
+  final GameAudioController? audio;
 
   @override
   State<GameFlow> createState() => _GameFlowState();
 }
 
-class _GameFlowState extends State<GameFlow> {
+class _GameFlowState extends State<GameFlow> with WidgetsBindingObserver {
+  late final GameAudioController _audio;
   GameAssets? _assets;
   Object? _loadError;
   _AppStage _stage = _AppStage.mainMenu;
@@ -52,7 +58,20 @@ class _GameFlowState extends State<GameFlow> {
   @override
   void initState() {
     super.initState();
+    _audio = widget.audio ?? GameAudioController();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeAudio();
     _loadAssets();
+  }
+
+  Future<void> _initializeAudio() async {
+    await _audio.initialize();
+    if (!mounted) return;
+    if (_stage == _AppStage.mainMenu) {
+      _audio.setMusic(MusicTrack.menu);
+    } else if (_stage == _AppStage.colorChoice) {
+      _audio.setMusic(MusicTrack.attire);
+    }
   }
 
   Future<void> _loadAssets() async {
@@ -78,6 +97,7 @@ class _GameFlowState extends State<GameFlow> {
   }
 
   void _showColorChoice() {
+    _audio.setMusic(MusicTrack.attire);
     setState(() {
       _runPalette = null;
       _stage = _AppStage.colorChoice;
@@ -93,6 +113,8 @@ class _GameFlowState extends State<GameFlow> {
   }
 
   void _showMainMenu() {
+    _audio.resume();
+    _audio.setMusic(MusicTrack.menu);
     setState(() {
       _runPalette = null;
       _stage = _AppStage.mainMenu;
@@ -100,7 +122,20 @@ class _GameFlowState extends State<GameFlow> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A run owns its own lifecycle so returning to a paused run stays paused.
+    if (_stage == _AppStage.game) return;
+    if (state == AppLifecycleState.resumed) {
+      _audio.resume();
+    } else {
+      _audio.pause();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (widget.audio == null) _audio.dispose();
     _assets?.dispose();
     super.dispose();
   }
@@ -136,17 +171,20 @@ class _GameFlowState extends State<GameFlow> {
       _AppStage.mainMenu => MainMenu(
         key: const ValueKey('main_menu'),
         assets: assets,
+        audio: _audio,
         onPlay: _showColorChoice,
       ),
       _AppStage.colorChoice => CharacterColorScreen(
         key: const ValueKey('color_choice'),
         assets: assets,
+        audio: _audio,
         onSelected: _startRun,
         onBack: _showMainMenu,
       ),
       _AppStage.game => GameScreen(
         key: ValueKey('game_$_runSession'),
         assets: assets,
+        audio: _audio,
         palette: _runPalette!,
         onMainMenu: _showMainMenu,
       ),

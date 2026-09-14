@@ -8,6 +8,7 @@ import '../game_assets.dart';
 import '../game_world.dart';
 import '../models/player.dart';
 import '../models/slime_enemy.dart';
+import '../models/dino_tri.dart';
 import '../models/magic_orb.dart';
 import '../models/combat_effect.dart';
 import '../models/player_stats.dart';
@@ -56,6 +57,7 @@ class GamePainter extends CustomPainter {
     canvas.translate(-cameraPosition.dx, -cameraPosition.dy);
 
     _drawArena(canvas, size, cameraPosition);
+    _drawBossTelegraphs(canvas);
     _drawLevelUpEffect(canvas);
     _drawWorldEntities(canvas, size, cameraPosition);
     _drawCombatEffects(canvas);
@@ -162,6 +164,10 @@ class GamePainter extends CustomPainter {
     for (final slime in visibleSlimes) {
       _drawShadow(canvas, slime.position, 26, yOffset: 17);
     }
+    final boss = world.boss;
+    if (boss != null && boss.isVisible) {
+      _drawShadow(canvas, boss.position, 84, yOffset: 34);
+    }
 
     final drawables = <_WorldDrawable>[
       _WorldDrawable.player(world.player.position.dy),
@@ -169,6 +175,8 @@ class GamePainter extends CustomPainter {
         _WorldDrawable.orb(orb.positionAround(world.player.position).dy, orb),
       for (final slime in visibleSlimes)
         _WorldDrawable.slime(slime.position.dy, slime),
+      if (boss != null && boss.isVisible)
+        _WorldDrawable.boss(boss.position.dy, boss),
     ]..sort((first, second) => first.worldY.compareTo(second.worldY));
 
     for (final drawable in drawables) {
@@ -179,6 +187,8 @@ class GamePainter extends CustomPainter {
           _drawSlime(canvas, drawable.slime!);
         case _DrawableType.orb:
           _drawOrb(canvas, drawable.orb!);
+        case _DrawableType.boss:
+          _drawBoss(canvas, drawable.boss!);
       }
     }
     for (final projectile in world.projectiles) {
@@ -313,6 +323,111 @@ class GamePainter extends CustomPainter {
     );
   }
 
+  void _drawBoss(ui.Canvas canvas, DinoTri boss) {
+    final center = _snapOffset(boss.position);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    if (boss.mirrorHorizontally) canvas.scale(-1, 1);
+    final sheet = assets.dinoSheets[boss.animation]!;
+    final paint = ui.Paint()
+      ..isAntiAlias = false
+      ..filterQuality = ui.FilterQuality.none
+      ..color = ui.Color.fromRGBO(255, 255, 255, boss.opacity);
+    canvas.drawImageRect(sheet, boss.sourceRect, boss.destinationRect, paint);
+    if (boss.hurtFlashTime > 0 && boss.isActive) {
+      canvas.drawImageRect(
+        sheet,
+        boss.sourceRect,
+        boss.destinationRect,
+        _flashPaint(const ui.Color(0xCCFFFFFF)),
+      );
+    }
+    canvas.restore();
+  }
+
+  void _drawBossTelegraphs(ui.Canvas canvas) {
+    final boss = world.boss;
+    if (boss == null || !boss.isActive) return;
+    final warning = boss.attackTelegraph;
+    if (warning != null) {
+      final bounds = ui.Rect.fromLTRB(
+        math.min(warning.start.dx, warning.end.dx),
+        warning.start.dy - warning.radius,
+        math.max(warning.start.dx, warning.end.dx),
+        warning.start.dy + warning.radius,
+      );
+      final color = warning.strong
+          ? const ui.Color(0xFFFF8469)
+          : const ui.Color(0xFFFFD677);
+      canvas.drawRect(
+        bounds,
+        ui.Paint()
+          ..isAntiAlias = false
+          ..color = color.withValues(alpha: 0.18),
+      );
+      canvas.drawRect(
+        bounds,
+        ui.Paint()
+          ..isAntiAlias = false
+          ..style = ui.PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = color.withValues(alpha: 0.85),
+      );
+    }
+    for (final hazard in boss.hazards) {
+      final center = _snapOffset(hazard.position);
+      if (hazard.isWarning) {
+        final outline = _groundOctagon(center, DinoHazard.radius);
+        canvas.drawPath(
+          outline,
+          ui.Paint()
+            ..isAntiAlias = false
+            ..color = const ui.Color(0x44FFD677),
+        );
+        canvas.drawPath(
+          outline,
+          ui.Paint()
+            ..isAntiAlias = false
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = const ui.Color(0xFFFFD677),
+        );
+        canvas.drawPath(
+          _groundOctagon(center, DinoHazard.radius * hazard.progress),
+          ui.Paint()
+            ..isAntiAlias = false
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = const ui.Color(0xFFF2AE61),
+        );
+      } else if (!hazard.isFinished) {
+        // Only the authored green splash to the right of Dino's body; do not
+        // duplicate the boss sprite or manufacture a new effect animation.
+        canvas.drawImageRect(
+          assets.dinoSheets[DinoAnimation.attackA]!,
+          ui.Rect.fromLTWH(hazard.effectFrame * 384 + 240, 64, 144, 64),
+          ui.Rect.fromCenter(center: center, width: 216, height: 96),
+          _spritePaint,
+        );
+      }
+    }
+  }
+
+  ui.Path _groundOctagon(ui.Offset center, double radius) {
+    final path = ui.Path();
+    for (var index = 0; index < 8; index++) {
+      final angle = (index + 0.5) * math.pi / 4;
+      final x = (center.dx + math.cos(angle) * radius).roundToDouble();
+      final y = (center.dy + math.sin(angle) * radius).roundToDouble();
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    return path..close();
+  }
+
   void _drawCombatEffects(ui.Canvas canvas) {
     for (final effect in world.effects) {
       final isArcane = effect.kind == CombatEffectKind.arcaneImpact;
@@ -424,22 +539,32 @@ class GamePainter extends CustomPainter {
   }
 }
 
-enum _DrawableType { player, slime, orb }
+enum _DrawableType { player, slime, orb, boss }
 
 class _WorldDrawable {
-  const _WorldDrawable._(this.type, this.worldY, this.slime, this.orb);
+  const _WorldDrawable._(
+    this.type,
+    this.worldY,
+    this.slime,
+    this.orb,
+    this.boss,
+  );
 
   const _WorldDrawable.player(double worldY)
-    : this._(_DrawableType.player, worldY, null, null);
+    : this._(_DrawableType.player, worldY, null, null, null);
 
   const _WorldDrawable.orb(double worldY, MagicOrb orb)
-    : this._(_DrawableType.orb, worldY, null, orb);
+    : this._(_DrawableType.orb, worldY, null, orb, null);
 
   const _WorldDrawable.slime(double worldY, SlimeEnemy slime)
-    : this._(_DrawableType.slime, worldY, slime, null);
+    : this._(_DrawableType.slime, worldY, slime, null, null);
+
+  const _WorldDrawable.boss(double worldY, DinoTri boss)
+    : this._(_DrawableType.boss, worldY, null, null, boss);
 
   final _DrawableType type;
   final double worldY;
   final SlimeEnemy? slime;
   final MagicOrb? orb;
+  final DinoTri? boss;
 }

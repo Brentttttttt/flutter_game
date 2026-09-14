@@ -140,7 +140,7 @@ Every color shares the same behavior, hitbox, HP, damage and XP rules.
 Only PNGs were supplied in this new folder; no timing metadata, creator or
 license document was present. See the separate `slime_v2` credit entry.
 
-## Previous Animated Slime (retained, unused by gameplay)
+## Previous Animated Slime (historical, unused by gameplay)
 
 Files are in `assets/characters/enemies/slime/`. Every frame is **64 × 64**,
 in a horizontal row, and every corresponding `.ase` source specifies **100 ms
@@ -158,9 +158,10 @@ per frame** (10 fps).
 | `sleeping.png` | 320 × 64 | 5 | Unused sleeping animation |
 | `Sleeps.png` | 512 × 64 | 8 | Unused sleep animation |
 
-These previous assets remain unmodified in the repository. Their separate
-directional walking sheets and 64px source rectangles are no longer loaded by
-the game; the current renderer uses the `slime_v2` row layout above.
+These previous files were removed from the working folder before the endless
+update and remain available in Git history. Their separate directional walking
+sheets and 64px source rectangles are no longer loaded by the game; the current
+renderer uses the `slime_v2` row layout above.
 
 ## Existing player artwork
 
@@ -224,5 +225,56 @@ technical package identifiers and executable names remain unchanged.
 - `assets/font/friendlyscribbles.ttf`: existing UI font, family
   `friendlyscribbles`, Regular, embedded Version 2 and copyright `kmlgames`.
   The PNGs are references rather than a replacement bitmap-font atlas.
+
+## Dino Tri
+
+`assets/characters/enemies/boss_dino/` contains eight horizontal PNG sheets.
+Every frame is **384 × 128**, including the transparent padding used by the
+authored attack effects. Slicing these into 128px squares would break the poses.
+
+| File | Frames | Sheet size |
+| --- | --- | --- |
+| `dino_tri_idle.png` | 6 | 2304 × 128 |
+| `dino_tri_move.png` | 8 | 3072 × 128 |
+| `dino_tri_sit_1_start.png` | 8 | 3072 × 128 |
+| `dino_tri_sit_2_loop.png` | 5 | 1920 × 128 |
+| `dino_tri_sit_3_end.png` | 8 | 3072 × 128 |
+| `dino_tri_thought.png` | 20 | 7680 × 128 |
+| `dino_tri_attack_A.png` | 30 | 11520 × 128 |
+| `dino_tri_attack_B.png` | 30 | 11520 × 128 |
+
+The source faces right. Left-facing poses mirror horizontally around the fixed
+body/ground origin `(208, 104)` in each frame. Rendering scales both axes by
+1.5 to 576 × 192; most of that width is transparent or contains attack effects.
+The visible body stays anchored while the animation or facing changes. The
+thought ability also uses the supplied green Attack A effect crop from frames
+17–26, `(240, 64, 144, 64)` relative to each frame. No up/down or death sheet
+exists: defeat uses the existing sit-end pose followed by a short fade.
+
+## Music and sound
+
+The supplied pack contains 10 BGM and 32 SFX WAV files. All are PCM, stereo,
+44.1 kHz, 16-bit. Only the following five tracks and twelve distinct SFX are
+included in the runtime asset manifest. BGM lasts approximately 120–129 seconds;
+the selected SFX last approximately 1.1–2.7 seconds.
+
+| Screen / encounter | Exact file under `assets/bgm/` |
+| --- | --- |
+| Main menu | `xDeviruchi - Title Theme .wav` |
+| Attire selection | `xDeviruchi - And The Journey Begins .wav` |
+| Arena | `xDeviruchi - Exploring The Unknown.wav` |
+| Boss warning | `xDeviruchi - Prepare for Battle! .wav` |
+| Dino Tri | `xDeviruchi - Decisive Battle.wav` |
+
+The spaces immediately before `.wav` in three names are part of the actual
+filenames. The other BGM tracks are not used. Tracks loop with a short fade
+between them; only the current track is cached for playback.
+
+Sweet Sounds files under `assets/sfx/` are `Cat_Meow.wav`, `Sword_Slash.wav`,
+`Gun.wav`, `Explosion.wav`, `Hurt.wav`, `Powerup.wav`, `Confirm.wav`, `Cancel.wav`,
+`Pause.wav`, `Low_Health.wav`, `Siren.wav`, and `Monster_Scream.wav`. Slash and
+explosion events accompany actual successful damage; Gun accompanies projectile
+launch. A bounded pool of 15 native sound voices avoids allocating players per
+hit. Independent music/SFX volumes and mutes persist locally.
 
 See [ASSET_CREDITS.md](../ASSET_CREDITS.md) for the unverified licensing items.

@@ -16,6 +16,8 @@ abstract final class EnemySpawnBalance {
   static const pressurePerLevel = 0.08;
   static const levelsPerEnemySlot = 2;
   static const maximumContributingLevels = 12;
+  static const maximumEndlessEnemyLimit = 48;
+  static const minimumEndlessInterval = 0.45;
 }
 
 class EnemySpawner {
@@ -24,26 +26,48 @@ class EnemySpawner {
   final math.Random _random;
   double timeUntilNextSpawn = 1;
 
-  double spawnIntervalFor(double survivalTime, {int playerLevel = 1}) {
+  double spawnIntervalFor(
+    double survivalTime, {
+    int playerLevel = 1,
+    int bossesDefeated = 0,
+  }) {
     final timePressure =
         math.max(0.0, survivalTime) / EnemySpawnBalance.secondsPerTimePressure;
     final levelPressure =
         _levelSteps(playerLevel) * EnemySpawnBalance.pressurePerLevel;
     return math.max(
-      EnemySpawnBalance.minimumInterval,
-      EnemySpawnBalance.startingInterval / (1 + timePressure + levelPressure),
+      math.max(
+        EnemySpawnBalance.minimumEndlessInterval,
+        EnemySpawnBalance.minimumInterval /
+            (1 + math.max(0, bossesDefeated) * 0.06),
+      ),
+      EnemySpawnBalance.startingInterval /
+          (1 +
+              timePressure +
+              levelPressure +
+              math.max(0, bossesDefeated) * 0.12),
     );
   }
 
-  int maximumEnemiesFor(double survivalTime, {int playerLevel = 1}) {
+  int maximumEnemiesFor(
+    double survivalTime, {
+    int playerLevel = 1,
+    int bossesDefeated = 0,
+  }) {
     final timeSlots =
         (math.max(0.0, survivalTime) / EnemySpawnBalance.secondsPerEnemySlot)
             .floor();
     final levelSlots =
         _levelSteps(playerLevel) ~/ EnemySpawnBalance.levelsPerEnemySlot;
     return math.min(
-      EnemySpawnBalance.maximumEnemyLimit,
-      EnemySpawnBalance.startingEnemyLimit + timeSlots + levelSlots,
+      math.min(
+        EnemySpawnBalance.maximumEndlessEnemyLimit,
+        EnemySpawnBalance.maximumEnemyLimit + math.max(0, bossesDefeated) * 2,
+      ),
+      EnemySpawnBalance.startingEnemyLimit +
+          timeSlots +
+          levelSlots +
+          math.max(0, bossesDefeated) * 2,
     );
   }
 
@@ -58,6 +82,7 @@ class EnemySpawner {
     required double deltaTime,
     required double survivalTime,
     int playerLevel = 1,
+    int bossesDefeated = 0,
     required Arena arena,
     required GameCamera camera,
     required Offset playerPosition,
@@ -74,7 +99,11 @@ class EnemySpawner {
 
     final visibleEnemies = existingEnemies.where((enemy) => enemy.isVisible);
     if (visibleEnemies.length >=
-        maximumEnemiesFor(survivalTime, playerLevel: playerLevel)) {
+        maximumEnemiesFor(
+          survivalTime,
+          playerLevel: playerLevel,
+          bossesDefeated: bossesDefeated,
+        )) {
       timeUntilNextSpawn = 0.3;
       return null;
     }
@@ -89,7 +118,11 @@ class EnemySpawner {
     // frame, a level-up pause, or a full enemy limit. One update adds at most one.
     timeUntilNextSpawn = spawnPosition == null
         ? 0.35
-        : spawnIntervalFor(survivalTime, playerLevel: playerLevel);
+        : spawnIntervalFor(
+            survivalTime,
+            playerLevel: playerLevel,
+            bossesDefeated: bossesDefeated,
+          );
     return spawnPosition;
   }
 

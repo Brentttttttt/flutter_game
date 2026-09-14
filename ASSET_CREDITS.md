@@ -8,7 +8,10 @@ This document records credit; it does **not** grant redistribution rights.
 
 | Pack / asset | Creator | Local files | Use | License evidence |
 | --- | --- | --- | --- | --- |
-| Animated Slime | PixelFranek | `assets/characters/enemies/slime/` (`.png` and `.ase`) | Previous enemy artwork, retained in the project | **Needs verification:** no license/readme supplied locally. |
+| Animated Slime | PixelFranek | Previous `assets/characters/enemies/slime/` files, available in Git history | Previously used enemy artwork; replaced by slime_v2 | **Needs verification:** no license/readme was supplied locally. |
+| Dino Tri | Creator not recorded in supplied files | `assets/characters/enemies/boss_dino/` | Recurring boss, authored spit and Thought ability effects | **Needs verification:** creator, original source and license; eight PNG sheets supplied without a readme. |
+| xDeviruchi music | xDeviruchi | `assets/bgm/` | Title Theme, And The Journey Begins, Exploring The Unknown, Prepare for Battle!, Decisive Battle | **Needs verification:** original source, distribution and attribution terms; no license/readme supplied. The other five supplied tracks are unused. |
+| Sweet Sounds | Creator not recorded in supplied files | `assets/sfx/` | Game Boy-style menu, combat and boss sound effects | **Needs verification:** creator, original source and license; only WAVs supplied locally. |
 | Improved slime sprites (`slime_v2`) | Creator not recorded in supplied files | `assets/characters/enemies/slime_v2/Slime_{Blue,Brown,Green,Grey,Orange,Red,Yellow}.png` | Current seven-color enemy idle, walk, attack and death animations | **Needs verification:** creator, original source and license; this folder contains only seven PNGs. |
 | Gems / Coins Free | La Red Games | `assets/xp-gem/xp.png` | Animated green XP gem | **Needs verification:** no license/readme supplied locally. “Free” in the pack name does not establish a license. |
 | Level-Up Effect | Sentient Dream Studio | `assets/level-up-effect/` | One-shot level-up animation | **Needs verification:** no license/readme supplied locally. |
@@ -22,8 +25,9 @@ This document records credit; it does **not** grant redistribution rights.
 
 ## Local evidence checked
 
-The supplied `assets/` tree contains 1,100 PNG images, nine Aseprite `.ase`
-sources and one TrueType font. No license, readme, text, HTML or PDF documents
+The current supplied `assets/` tree contains 1,099 PNG images, 42 WAV files
+and one TrueType font. The previous slime PNG/Aseprite files were already removed
+from the working folder before the endless-mode update. No license, readme, text, HTML or PDF documents
 were included anywhere in that tree. The original root `README.md` was the
 standard Flutter project stub and contained no asset licensing information.
 PNG metadata contains rendering information rather than license terms.
@@ -38,4 +42,4 @@ above with the exact terms and any required attribution wording. Repository
 visibility does not grant licenses or change third-party asset terms.
 
 See [the verified sprite layouts](docs/ASSET_LAYOUTS.md) for source rectangles and
-frame counts. The original supplied artwork remains in place.
+frame counts. Current supplied artwork and audio are used without changing the source files.

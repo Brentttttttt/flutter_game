@@ -9,8 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  audioplayers: ^6.8.1
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
+  integration_test:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -21,6 +25,24 @@ flutter:
     - assets/characters/player_character/color_1/
     - assets/characters/player_character/color_2/
     - assets/characters/enemies/slime_v2/
+    - assets/characters/enemies/boss_dino/
+    - "assets/bgm/xDeviruchi - Title Theme .wav"
+    - "assets/bgm/xDeviruchi - And The Journey Begins .wav"
+    - "assets/bgm/xDeviruchi - Exploring The Unknown.wav"
+    - "assets/bgm/xDeviruchi - Prepare for Battle! .wav"
+    - "assets/bgm/xDeviruchi - Decisive Battle.wav"
+    - assets/sfx/Cat_Meow.wav
+    - assets/sfx/Sword_Slash.wav
+    - assets/sfx/Gun.wav
+    - assets/sfx/Explosion.wav
+    - assets/sfx/Hurt.wav
+    - assets/sfx/Powerup.wav
+    - assets/sfx/Confirm.wav
+    - assets/sfx/Cancel.wav
+    - assets/sfx/Pause.wav
+    - assets/sfx/Low_Health.wav
+    - assets/sfx/Siren.wav
+    - assets/sfx/Monster_Scream.wav
     - assets/orbs/orbs-sheet.png
     - assets/tileset/
     - assets/xp-gem/xp.png
