@@ -248,8 +248,15 @@ body/ground origin `(208, 104)` in each frame. Rendering scales both axes by
 1.5 to 576 × 192; most of that width is transparent or contains attack effects.
 The visible body stays anchored while the animation or facing changes. The
 thought ability also uses the supplied green Attack A effect crop from frames
-17–26, `(240, 64, 144, 64)` relative to each frame. No up/down or death sheet
+17–26, `(240, 56, 144, 72)` relative to each frame. No up/down or death sheet
 exists: defeat uses the existing sit-end pose followed by a short fade.
+
+For 360-degree attacks, Attack A/B body rendering uses frame-relative
+`(128, 0, 112, 128)` at the same 1.5× scale and fixed ground origin. Their authored
+effect crop `(240, 56, 144, 72)` is drawn separately and uniformly rotated toward
+the locked attack direction; Dino's body is never rotated. The existing Move
+frames animate Attack B's short dash. Source PNGs and animation frame counts are
+unchanged.
 
 ## Music and sound
 

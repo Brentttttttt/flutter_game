@@ -104,7 +104,8 @@ void main() {
       expect(boss.isEnraged, isTrue);
       await _captureImage(tester, 'boss_enraged');
 
-      boss.position = world.player.position - const Offset(85, 0);
+      // Melee must hit vertically as well as in the original horizontal cases.
+      boss.position = world.player.position - const Offset(0, 85);
       boss.activity = DinoActivity.chasing;
       boss.attackCooldownRemaining = 0;
       boss.rangedCooldownRemaining = 999;
@@ -131,6 +132,26 @@ void main() {
       await _settleMusic(audio, MusicTrack.boss);
       expect(world.boss!.health.maxHealth, greaterThan(firstMaxHp));
       expect(world.bossEncounters, 2);
+      final nextBoss = world.boss!;
+      world.player.stats.orbDamage = 10;
+      nextBoss.position = world.player.position - const Offset(0, 200);
+      nextBoss.activity = DinoActivity.chasing;
+      nextBoss.attackCooldownRemaining = 999;
+      nextBoss.abilityCooldownRemaining = 999;
+      nextBoss.rangedCooldownRemaining = 0;
+      world.setMovementInput(const Offset(1, 0));
+      await _until(tester, () => nextBoss.activity == DinoActivity.preparing);
+      final predictedTarget = nextBoss.attackTarget;
+      expect(predictedTarget.dx, greaterThan(world.player.position.dx));
+      expect(nextBoss.attackDirection.dy, greaterThan(0.5));
+      final healthBeforeDodge = world.player.health.currentHealth;
+      world.setMovementInput(const Offset(-1, 0));
+      await _until(tester, () => nextBoss.isCharging);
+      expect(nextBoss.attackTarget, predictedTarget);
+      await _captureImage(tester, 'predicted_charge');
+      await _until(tester, () => nextBoss.activity == DinoActivity.recovering);
+      expect(world.player.health.currentHealth, healthBeforeDodge);
+      world.setMovementInput(Offset.zero);
       world.player.health.takeDamage(999999);
       await _until(tester, () => world.isGameOver);
       await _settleMusic(audio, null);

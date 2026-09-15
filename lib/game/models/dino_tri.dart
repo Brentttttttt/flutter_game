@@ -64,6 +64,9 @@ class DinoTri {
   static const attackDuration = 1.5;
   static const attackAHitTime = 17 / 20;
   static const attackBHitTime = 20 / 20;
+  static const chargeStartTime = 0.85;
+  static const chargeDuration = 0.45;
+  static const maximumPredictionDistance = 64.0;
   static const abilityDuration = 2.0;
   static const recoveryDuration = 0.4;
   static const defeatDuration = 1.0;
@@ -100,7 +103,28 @@ class DinoTri {
   bool _facesRight = true;
   bool _attackFacesRight = true;
   bool _strikeConsumed = false;
+  bool _chargeHitConsumed = false;
   Offset _abilityTarget = Offset.zero;
+  Offset _attackTarget = Offset.zero;
+  Offset _attackDirection = const Offset(1, 0);
+  Offset _chargeOrigin = Offset.zero;
+  Offset _chargeEnd = Offset.zero;
+
+  Offset get attackTarget => _attackTarget;
+  Offset get attackDirection => _attackDirection;
+  bool get isCharging =>
+      activity == DinoActivity.attackingB &&
+      animationTime >= chargeStartTime &&
+      animationTime < chargeStartTime + chargeDuration;
+  bool get hasDirectionalEffect =>
+      (activity == DinoActivity.attackingA ||
+          activity == DinoActivity.attackingB) &&
+      attackEffectFrame >= 17 &&
+      attackEffectFrame <= 26;
+  int get attackEffectFrame =>
+      math.min(29, (animationTime / attackDuration * 30).floor());
+  double get chargeLeadTime => isEnraged ? 0.36 : 0.30;
+  double get abilityLeadTime => isEnraged ? 0.30 : 0.24;
 
   bool get isActive =>
       activity != DinoActivity.defeated && activity != DinoActivity.removed;
@@ -133,7 +157,8 @@ class DinoTri {
     DinoActivity.chasing => DinoAnimation.move,
     DinoActivity.preparing => DinoAnimation.sitStart,
     DinoActivity.attackingA => DinoAnimation.attackA,
-    DinoActivity.attackingB => DinoAnimation.attackB,
+    DinoActivity.attackingB =>
+      isCharging ? DinoAnimation.move : DinoAnimation.attackB,
     DinoActivity.ability => DinoAnimation.thought,
     DinoActivity.recovering ||
     DinoActivity.defeated ||
@@ -142,6 +167,9 @@ class DinoTri {
 
   int get animationFrame {
     final count = frameCounts[animation]!;
+    if (isCharging) {
+      return ((animationTime - chargeStartTime) * 16).floor() % count;
+    }
     final duration = switch (activity) {
       DinoActivity.preparing => preparationDuration,
       DinoActivity.attackingA || DinoActivity.attackingB => attackDuration,
@@ -169,6 +197,24 @@ class DinoTri {
     renderSize.height,
   );
 
+  // Once released, spit is rendered separately along the actual 2D aim vector.
+  // Keep the authored body upright and mirror only horizontally.
+  bool get separatesAttackEffect =>
+      (animation == DinoAnimation.attackA ||
+          animation == DinoAnimation.attackB) &&
+      attackEffectFrame >= 17;
+  Rect get bodySourceRect => separatesAttackEffect
+      ? Rect.fromLTWH(sourceRect.left + 128, 0, 112, 128)
+      : sourceRect;
+  Rect get bodyDestinationRect => separatesAttackEffect
+      ? Rect.fromLTWH(
+          (128 - sourceBodyOrigin.dx) * 1.5,
+          destinationRect.top,
+          168,
+          192,
+        )
+      : destinationRect;
+
   /// A directional floor warning; the target direction locks at windup start.
   ({Offset start, Offset end, double radius, bool strong})?
   get attackTelegraph {
@@ -177,14 +223,16 @@ class DinoTri {
         : activity;
     final strong = attack == DinoActivity.attackingB;
     if (attack != DinoActivity.attackingA && !strong) return null;
-    if (activity != DinoActivity.preparing && _strikeConsumed) return null;
-    final direction = _attackFacesRight ? 1.0 : -1.0;
+    if (activity != DinoActivity.preparing &&
+        (strong
+            ? animationTime >= chargeStartTime + chargeDuration
+            : _strikeConsumed)) {
+      return null;
+    }
     return (
-      start: position + Offset(direction * radius, 8),
-      end:
-          position +
-          Offset(direction * (strong ? attackBReach : attackAReach), 8),
-      radius: strikeRadius,
+      start: strong ? _chargeOrigin : position + _attackDirection * radius,
+      end: strong ? _chargeEnd : position + _attackDirection * attackAReach,
+      radius: strong ? radius : strikeRadius,
       strong: strong,
     );
   }
@@ -194,6 +242,7 @@ class DinoTri {
     required Offset playerPosition,
     required double playerRadius,
     required Arena arena,
+    Offset playerVelocity = Offset.zero,
   }) {
     _pendingStrikes.clear();
     for (final hazard in hazards) {
@@ -204,7 +253,7 @@ class DinoTri {
     var remaining = deltaTime;
     while (remaining > 0.000001) {
       final dt = math.min(remaining, 0.05);
-      _step(dt, playerPosition, playerRadius, arena);
+      _step(dt, playerPosition, playerRadius, arena, playerVelocity);
       remaining -= dt;
     }
   }
@@ -214,6 +263,7 @@ class DinoTri {
     Offset playerPosition,
     double playerRadius,
     Arena arena,
+    Offset playerVelocity,
   ) {
     hurtFlashTime = math.max(0, hurtFlashTime - dt);
     orbHitCooldownRemaining = math.max(0, orbHitCooldownRemaining - dt);
@@ -244,11 +294,26 @@ class DinoTri {
         final distance = toPlayer.distance;
         _updateFacing(toPlayer);
         if (abilityCooldownRemaining <= 0 && distance <= 380) {
-          _startAttack(DinoActivity.ability, playerPosition, arena);
+          _startAttack(
+            DinoActivity.ability,
+            playerPosition,
+            arena,
+            playerVelocity,
+          );
         } else if (attackCooldownRemaining <= 0 && distance <= 96) {
-          _startAttack(DinoActivity.attackingA, playerPosition, arena);
+          _startAttack(
+            DinoActivity.attackingA,
+            playerPosition,
+            arena,
+            playerVelocity,
+          );
         } else if (rangedCooldownRemaining <= 0 && distance <= 300) {
-          _startAttack(DinoActivity.attackingB, playerPosition, arena);
+          _startAttack(
+            DinoActivity.attackingB,
+            playerPosition,
+            arena,
+            playerVelocity,
+          );
         } else {
           final stoppingDistance = radius + playerRadius + 12;
           final travel = math.min(
@@ -272,20 +337,41 @@ class DinoTri {
           }
         }
       case DinoActivity.attackingA:
-      case DinoActivity.attackingB:
-        final strong = activity == DinoActivity.attackingB;
-        final hitTime = strong ? attackBHitTime : attackAHitTime;
-        if (!_strikeConsumed && animationTime >= hitTime) {
+        if (!_strikeConsumed && animationTime >= attackAHitTime) {
           _strikeConsumed = true;
-          final direction = _attackFacesRight ? 1.0 : -1.0;
           _pendingStrikes.add(
             _DinoStrike(
-              position + Offset(direction * radius, 8),
-              position +
-                  Offset(direction * (strong ? attackBReach : attackAReach), 8),
-              strong ? stats.attackBDamage : stats.attackADamage,
+              position + _attackDirection * radius,
+              position + _attackDirection * attackAReach,
+              stats.attackADamage,
+              radius: strikeRadius,
             ),
           );
+        }
+        if (animationTime >= attackDuration) {
+          _setActivity(DinoActivity.recovering);
+        }
+      case DinoActivity.attackingB:
+        if (animationTime >= chargeStartTime &&
+            animationTime - dt < chargeStartTime + chargeDuration) {
+          final before = position;
+          final progress = ((animationTime - chargeStartTime) / chargeDuration)
+              .clamp(0.0, 1.0);
+          position = arena.clampCircle(
+            Offset.lerp(_chargeOrigin, _chargeEnd, progress)!,
+            radius,
+          );
+          if (!_chargeHitConsumed) {
+            _pendingStrikes.add(
+              _DinoStrike(
+                before,
+                position,
+                stats.attackBDamage,
+                radius: radius,
+                isCharge: true,
+              ),
+            );
+          }
         }
         if (animationTime >= attackDuration) {
           _setActivity(DinoActivity.recovering);
@@ -304,11 +390,45 @@ class DinoTri {
     }
   }
 
-  void _startAttack(DinoActivity next, Offset target, Arena arena) {
+  void _startAttack(
+    DinoActivity next,
+    Offset target,
+    Arena arena,
+    Offset velocity,
+  ) {
     _preparedAttack = next;
-    _attackFacesRight = target.dx >= position.dx;
+    final leadTime = switch (next) {
+      DinoActivity.attackingB => chargeLeadTime,
+      DinoActivity.ability => abilityLeadTime,
+      _ => 0.0,
+    };
+    var lead = velocity.dx.isFinite && velocity.dy.isFinite
+        ? velocity * leadTime
+        : Offset.zero;
+    final maximumLead = next == DinoActivity.ability
+        ? DinoHazard.radius
+        : maximumPredictionDistance;
+    if (lead.distance > maximumLead) lead = lead / lead.distance * maximumLead;
+    _attackTarget = arena.clampCircle(
+      target + lead,
+      next == DinoActivity.ability ? DinoHazard.radius : radius,
+    );
+    final delta = _attackTarget - position;
+    _attackDirection = delta.distance > 0.001
+        ? delta / delta.distance
+        : Offset(_facesRight ? 1 : -1, 0);
+    // A vertical target preserves the last sensible left/right sprite facing.
+    _attackFacesRight = _attackDirection.dx.abs() > 0.001
+        ? _attackDirection.dx > 0
+        : _facesRight;
     _strikeConsumed = false;
-    _abilityTarget = arena.clampCircle(target, DinoHazard.radius);
+    _chargeHitConsumed = false;
+    _abilityTarget = _attackTarget;
+    _chargeOrigin = position;
+    _chargeEnd = arena.clampCircle(
+      position + _attackDirection * math.min(attackBReach, delta.distance),
+      radius,
+    );
     attackCooldownRemaining = 3.2 * cooldownMultiplier;
     if (next == DinoActivity.attackingB) {
       rangedCooldownRemaining = 6.5 * cooldownMultiplier;
@@ -321,7 +441,8 @@ class DinoTri {
   }
 
   /// One damage opportunity at the authored strike/release frame, or at a
-  /// targeted splash's detonation. Moving sideways or behind dodges the spit.
+  /// targeted splash's detonation. The charge sweeps its locked 2D route and
+  /// only its first contact can damage; it never homes after commitment.
   int consumeAttackHit({
     required Offset playerPosition,
     required double playerRadius,
@@ -329,14 +450,16 @@ class DinoTri {
     if (!isActive) return 0;
     var damage = 0;
     for (final strike in _pendingStrikes) {
+      if (strike.isCharge && _chargeHitConsumed) continue;
       if (segmentCircleHitTime(
             strike.start,
             strike.end,
             playerPosition,
-            strikeRadius + playerRadius,
+            strike.radius + playerRadius,
           ) !=
           null) {
         damage = math.max(damage, strike.damage);
+        if (strike.isCharge) _chargeHitConsumed = true;
       }
     }
     _pendingStrikes.clear();
@@ -383,10 +506,18 @@ class DinoTri {
 }
 
 class _DinoStrike {
-  const _DinoStrike(this.start, this.end, this.damage);
+  const _DinoStrike(
+    this.start,
+    this.end,
+    this.damage, {
+    required this.radius,
+    this.isCharge = false,
+  });
   final Offset start;
   final Offset end;
   final int damage;
+  final double radius;
+  final bool isCharge;
 }
 
 /// Thought captures the player's world position once. Its floor marker gives

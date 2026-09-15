@@ -325,6 +325,7 @@ class GamePainter extends CustomPainter {
 
   void _drawBoss(ui.Canvas canvas, DinoTri boss) {
     final center = _snapOffset(boss.position);
+    if (boss.attackDirection.dy < 0) _drawBossDirectionalEffect(canvas, boss);
     canvas.save();
     canvas.translate(center.dx, center.dy);
     if (boss.mirrorHorizontally) canvas.scale(-1, 1);
@@ -333,15 +334,40 @@ class GamePainter extends CustomPainter {
       ..isAntiAlias = false
       ..filterQuality = ui.FilterQuality.none
       ..color = ui.Color.fromRGBO(255, 255, 255, boss.opacity);
-    canvas.drawImageRect(sheet, boss.sourceRect, boss.destinationRect, paint);
+    canvas.drawImageRect(
+      sheet,
+      boss.bodySourceRect,
+      boss.bodyDestinationRect,
+      paint,
+    );
     if (boss.hurtFlashTime > 0 && boss.isActive) {
       canvas.drawImageRect(
         sheet,
-        boss.sourceRect,
-        boss.destinationRect,
+        boss.bodySourceRect,
+        boss.bodyDestinationRect,
         _flashPaint(const ui.Color(0xCCFFFFFF)),
       );
     }
+    canvas.restore();
+    if (boss.attackDirection.dy >= 0) _drawBossDirectionalEffect(canvas, boss);
+  }
+
+  void _drawBossDirectionalEffect(ui.Canvas canvas, DinoTri boss) {
+    if (!boss.hasDirectionalEffect) return;
+    final charge = boss.activity == DinoActivity.attackingB;
+    final center = _snapOffset(boss.position);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    // Rotate only the isolated authored spit, never Dino's body or face.
+    canvas.rotate(math.atan2(boss.attackDirection.dy, boss.attackDirection.dx));
+    canvas.drawImageRect(
+      assets.dinoSheets[charge
+          ? DinoAnimation.attackB
+          : DinoAnimation.attackA]!,
+      ui.Rect.fromLTWH(boss.attackEffectFrame * 384 + 240, 56, 144, 72),
+      ui.Rect.fromLTWH(charge ? -88 : DinoTri.radius + 14, -40, 144, 72),
+      _spritePaint,
+    );
     canvas.restore();
   }
 
@@ -350,22 +376,29 @@ class GamePainter extends CustomPainter {
     if (boss == null || !boss.isActive) return;
     final warning = boss.attackTelegraph;
     if (warning != null) {
-      final bounds = ui.Rect.fromLTRB(
-        math.min(warning.start.dx, warning.end.dx),
-        warning.start.dy - warning.radius,
-        math.max(warning.start.dx, warning.end.dx),
-        warning.start.dy + warning.radius,
+      final direction = warning.end - warning.start;
+      final bounds = ui.RRect.fromRectAndRadius(
+        ui.Rect.fromLTWH(
+          -warning.radius,
+          -warning.radius,
+          direction.distance + warning.radius * 2,
+          warning.radius * 2,
+        ),
+        ui.Radius.circular(warning.radius),
       );
       final color = warning.strong
           ? const ui.Color(0xFFFF8469)
           : const ui.Color(0xFFFFD677);
-      canvas.drawRect(
+      canvas.save();
+      canvas.translate(warning.start.dx, warning.start.dy);
+      canvas.rotate(math.atan2(direction.dy, direction.dx));
+      canvas.drawRRect(
         bounds,
         ui.Paint()
           ..isAntiAlias = false
           ..color = color.withValues(alpha: 0.18),
       );
-      canvas.drawRect(
+      canvas.drawRRect(
         bounds,
         ui.Paint()
           ..isAntiAlias = false
@@ -373,6 +406,7 @@ class GamePainter extends CustomPainter {
           ..strokeWidth = 2
           ..color = color.withValues(alpha: 0.85),
       );
+      canvas.restore();
     }
     for (final hazard in boss.hazards) {
       final center = _snapOffset(hazard.position);
@@ -405,8 +439,8 @@ class GamePainter extends CustomPainter {
         // duplicate the boss sprite or manufacture a new effect animation.
         canvas.drawImageRect(
           assets.dinoSheets[DinoAnimation.attackA]!,
-          ui.Rect.fromLTWH(hazard.effectFrame * 384 + 240, 64, 144, 64),
-          ui.Rect.fromCenter(center: center, width: 216, height: 96),
+          ui.Rect.fromLTWH(hazard.effectFrame * 384 + 240, 56, 144, 72),
+          ui.Rect.fromLTWH(center.dx - 108, center.dy - 60, 216, 108),
           _spritePaint,
         );
       }

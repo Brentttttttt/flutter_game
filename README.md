@@ -4,7 +4,7 @@ A cute mobile pixel-art endless survivor roguelike starring Witch Kitty. This ex
 
 ## Play
 
-Tap PLAY and choose the existing kitty color. Touch the arena to place a floating joystick, then drag to move. Its base stays at the initial touch; releasing immediately stops Kitty and hides the joystick. The original finger owns movement, so additional touches cannot shift it. Upgrade cards and other interactive UI take priority. Arcane Orbs automatically damage slimes. Collect dropped green gems to gain XP; after the level-up animation, choose one of three upgrades. Fire Orb is available as an upgrade and fires automatically at nearby slimes. Retry starts a completely fresh run.
+Tap PLAY and choose Kitty's attire. Touch the arena to place a floating joystick, then drag to move. Its base stays at the initial touch; releasing immediately stops Kitty and hides the joystick. The original finger owns movement, so additional touches cannot shift it. Upgrade cards and other interactive UI take priority. Arcane Orbs automatically damage enemies. Collect dropped green gems to gain XP; after the level-up animation, choose one of three upgrades. Fire Orb is available as an upgrade and fires automatically at nearby enemies. Retry starts a completely fresh run.
 
 - Slimes render at 48px, orbs at 24px, and Witch Kitty stays at 64px. Sprites use nearest-neighbor rendering. Impact and projectile rendering sizes are defined separately from combat hitboxes in `lib/game/rendering/vfx_layout.dart`; the level-up animation renders behind Kitty with its source ground anchor aligned to her world feet.
 - Every slime randomly selects one of the seven `slime_v2` colors: Blue, Brown, Green, Grey, Orange, Red or Yellow. All colors share the same AI and combat stats.
@@ -15,15 +15,29 @@ Tap PLAY and choose the existing kitty color. Touch the arena to place a floatin
 - Fire Orb has five levels: unlock, +20% base projectile damage, -15% cooldown, one extra pierced enemy, +8 damage. Projectiles use swept collision and expire at 400px or two seconds.
 - Combat, spawning, collection and survival time freeze during level-up/selection. App backgrounding stops the single ticker; selection and game-over screens keep it stopped.
 
-Starting stats, weapon progression and visual budgets live in `lib/game/models/player_stats.dart`. Upgrade definitions/icons are in `lib/game/models/upgrade.dart`. Slimes spawned in the first 30 seconds have 20 HP and deal 6 damage; later spawns have 30 HP and deal 10 damage. Spawn pressure is configured in `lib/game/systems/enemy_spawner.dart`: the initial 2.8-second interval gradually shortens with survival time and player level, down to 0.9 seconds. The population starts at four, gains one slot every 20 seconds and every two gained levels, and caps at 24. Level contributions stop growing after 12 gained levels. Spawns arrive individually outside the camera with safe spacing; pauses and full populations never accumulate a burst. Effects, labels and projectiles are capped; persistent XP is culled only from offscreen drawing, never deleted for age.
+Starting stats, weapon progression and visual budgets live in `lib/game/models/player_stats.dart`. Upgrade definitions/icons are in `lib/game/models/upgrade.dart`. Slimes spawned in the first 30 seconds have 20 HP and deal 6 damage; later spawns have 30 HP and deal 10 damage. Spawn pressure is configured in `lib/game/systems/enemy_spawner.dart`. Time and every gained level continuously shorten intervals, increase population capacity and increase average batch size. The first minute stays gentle; growth accelerates afterward. There are no fixed time tiers or level-contribution cutoff.
+
+| Time / level | Slime capacity | Interval | Average batch |
+| --- | --- | --- | --- |
+| 1m / 4 | 11 | 1.64s | 1.48 |
+| 3m / 8 | 39 | 0.94s | 2.30 |
+| 5m / 12 | 73 | 0.66s | 2.83 |
+| 8m / 8 | 103 | 0.57s | 2.98 |
+| 8m / 15 | 126 | 0.49s | 3.23 |
+| 10m / 18 | 171 | 0.42s | 3.44 |
+| 15m / 25 | 240 | 0.32s | 3.74 |
+
+These samples exclude the small additional boss-defeat pressure. A high safety cap limits simultaneous slimes to 240. Intervals continue approaching 0.16 seconds and batches approach four enemies as time/level grow, even after population capacity reaches that safety cap. Fractional batch growth produces occasional additional slimes instead of abrupt waves. Each spawn stays outside the camera, at least 190px from Kitty, and spaced from existing enemies and other batch members. Stalls, pauses and full populations never accumulate missed waves. Effects, labels and projectiles retain their existing budgets; XP gems remain until collected.
 
 ## Endless bosses and sound
 
 Dino Tri arrives in the same arena at each five-minute milestone. Slime spawning winds down over the preceding 15 seconds; a six-second warning changes the music before the boss enters. Existing slimes and XP remain. Only one boss can be active at a time, and long fights never queue overlapping encounters.
 
-The first Dino Tri has 1,100 HP. It uses the supplied green close attack, a stronger red attack with a longer marked lane, and Thought to mark Kitty's current position before a splash. Stepping sideways or leaving the marked area dodges these attacks. At half HP it moves 15% faster and its cooldown multiplier becomes 0.86. Later milestones add 30% base HP and 8% base damage per encounter, with bounded movement/cooldown increases.
+The first Dino Tri has 1,100 HP. Movement and attacks work in all directions while its sprite remains upright and faces left/right. The green melee attack aims at Kitty's current position. Attack B telegraphs a short charge toward a predicted position, using 0.30 seconds of actual player velocity with at most 64px of lead. Thought marks a predicted splash using 0.24 seconds of lead, capped at 56px. Targets lock before the attack: changing direction or leaving the marker dodges them. World velocity accounts for normalized movement and blocking at walls/enemies.
 
-Defeat immediately removes the boss bar and attacks, restores normal arena music, and awards at least one level's worth of XP. Slimes resume gradually. Each victory increases the slime population limit by two and lowers the minimum interval, within a 48-enemy / 0.45-second mobile budget. Player stats, upgrades, orbs, XP, timer and kill counts continue unchanged. There is no victory screen, new map or healing-drop system. Only existing upgrade effects restore HP.
+Charge has 1.35 seconds of warning before a 0.45-second dash of up to 236px; swept collision applies damage only once. The supplied Move frames animate the dash, and isolated authored attack effects follow its direction without rotating Dino's body. At half HP it moves 15% faster, its cooldown multiplier becomes 0.86, and charge/ability lead rises slightly to 0.36/0.30 seconds. Later milestones add 30% base HP and 8% base damage per encounter, with bounded movement/cooldown increases.
+
+Defeat immediately removes the boss bar and attacks, restores normal arena music, and awards at least one level's worth of XP. Slimes resume gradually at the current time/level pressure, with a small additional increase per boss defeat. Player stats, upgrades, orbs, XP, timer and kill counts continue unchanged. There is no victory screen, new map or healing-drop system. Only existing upgrade effects restore HP.
 
 PLAY and attire selection each play a meow. The five supplied xDeviruchi tracks cover menu, attire, arena, warning and boss combat, with looping playback and short fades. Sweet Sounds covers actual damage, fire launches/impacts, hurt, level-ups, low-health entry and UI actions. Settings offers independent music/SFX volume and mute, remembered between launches. Pause stops gameplay, music and held movement; its settings do not reset the run. Game Over reports both slime and boss defeats; Retry resets every run system and restarts arena music.
 
@@ -55,7 +69,7 @@ Regenerate launcher resources from the existing sprite artwork:
 flutter test tool/generate_launcher_icon.dart
 ```
 
-`test/visual_review_test.dart` saves native-rendered review images under ignored `build/verification/`. `docs/ASSET_LAYOUTS.md` documents audited dimensions, source rectangles and animation frame counts. See `ASSET_CREDITS.md` for asset ownership and license verification items before distributing the game or assets.
+`test/visual_review_test.dart` saves rendered review images under ignored `build/verification/`. The optional `flutter test tool/crowd_performance_test.dart` diagnostic exercises 240 slimes and both weapons; its host timings are not a physical-device FPS guarantee. Add `--no-uninstall` to the Android integration command to retain its capture files under the test app's `code_cache/verification/`. `docs/ASSET_LAYOUTS.md` documents audited dimensions, source rectangles and animation frame counts. See `ASSET_CREDITS.md` for asset ownership and license verification items before distributing the game or assets.
 
 ## GitHub
 

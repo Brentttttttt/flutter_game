@@ -1,5 +1,52 @@
 # Verification
 
+## Continuous difficulty and 360-degree targeting — 2026-09-15
+
+`flutter analyze` reports no issues; all **109** unit, widget and rendering tests
+pass. New coverage checks continuous spawn progression through 30 minutes,
+uncapped level contributions, fractional batches and safe placement near arena
+corners, no accumulated wave debt, higher real-world population at 8m/L15 than
+8m/L8, all seven colors, and fresh-run reset. Dino tests cover melee/charge in all
+eight directions, dodging a committed charge, bounded lead/enrage, arena clamps,
+single swept damage, and actual movement velocity including blocked movement.
+
+Reviewed `31_dino_360_attacks_and_telegraphs.png`: the boss remains upright, the
+same artwork mirrors left/right, and warning paths follow every attack direction.
+Source-pixel inspection caught and fixed 2–5 clipped rows in the isolated attack
+effects; their source now starts at Y=56 with height 72. Scaling stays uniform.
+
+The standalone `flutter test tool/crowd_performance_test.dart` diagnostic passed
+with 240 live colored slimes, six Arcane Orbs and level-5 Fire Orb over twelve
+simulated seconds at both 30/60 updates per second. Real damage, piercing, VFX and
+sound events ran, reaching the existing 48-effect and 40-number budgets. The
+60Hz host sample measured p95 world update **1.068ms** and paint recording
+**2.216ms**. These are host debug timings, not physical-phone FPS claims; software
+raster/readback is measured separately. Screenshots and the JSON report are in
+ignored `build/verification/crowd_*`. Slime separation keeps its prior behavior
+and now rejects distant pairs before calculating a square root.
+
+The population safety cap is 240; interval and average batch size continue
+approaching 0.16s/four as time and level increase. Sample pacing is documented
+in the current README. Boss warning, music, XP, upgrades, deaths and restart flow
+retain the prior endless-mode behavior.
+
+The Android integration test also passes, including a downward melee strike and
+a predicted diagonal charge that is avoided by changing direction after its
+target locks. Both boss encounters, real audio transitions, defeat/XP continuation
+and a fresh retry complete successfully. The initial emulator run stalled in
+Android System UI before the menu loaded; restarting that UI and reducing the
+emulator display load recovered it. The final device test completed in 69 seconds.
+Used `--no-uninstall` to retain test captures, then exported the eight PNGs from
+the debug app's `code_cache/verification/` into ignored
+`build/verification/android/difficulty_*.png`.
+
+The final production release build succeeded in 82 seconds. Both normal and
+readable APK outputs contain **161,272,290 bytes (153.8 MiB)** and share SHA-256
+`49DEAFE2C7E7C73D95B63EF012643DA4F17EBFDF7349EB86171668226D8DDAA4`.
+The APK installs and launches successfully; its manifest retains the `Witch Kitty`
+display name and adaptive launcher icon. Output remains
+`build/app/outputs/flutter-apk/witch_kitty.apk`.
+
 ## Endless-mode update — 2026-09-14
 
 Flutter 3.44.6 / Dart 3.12.2. `flutter analyze` reports no issues and

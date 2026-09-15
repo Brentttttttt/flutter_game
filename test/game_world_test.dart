@@ -379,11 +379,20 @@ void main() {
         spawner.spawnIntervalFor(120),
         lessThan(spawner.spawnIntervalFor(30)),
       );
-      expect(spawner.spawnIntervalFor(10000), greaterThanOrEqualTo(0.9));
+      expect(
+        spawner.spawnIntervalFor(10000),
+        greaterThanOrEqualTo(EnemySpawnBalance.minimumInterval),
+      );
       expect(spawner.maximumEnemiesFor(0), 4);
-      expect(spawner.maximumEnemiesFor(60), 7);
-      expect(spawner.maximumEnemiesFor(120), 10);
-      expect(spawner.maximumEnemiesFor(10000), 24);
+      expect(spawner.maximumEnemiesFor(60), inInclusiveRange(7, 16));
+      expect(
+        spawner.maximumEnemiesFor(120),
+        greaterThan(spawner.maximumEnemiesFor(60)),
+      );
+      expect(
+        spawner.maximumEnemiesFor(10000),
+        EnemySpawnBalance.maximumEnemyLimit,
+      );
     });
   });
 }

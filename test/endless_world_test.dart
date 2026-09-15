@@ -232,9 +232,15 @@ void main() {
         bossesDefeated: victories,
       );
       expect(nextInterval, lessThan(interval));
-      expect(nextMaximum, greaterThan(maximum));
-      expect(nextInterval, greaterThanOrEqualTo(0.45));
-      expect(nextMaximum, lessThanOrEqualTo(48));
+      expect(nextMaximum, greaterThanOrEqualTo(maximum));
+      expect(
+        nextInterval,
+        greaterThanOrEqualTo(EnemySpawnBalance.minimumInterval),
+      );
+      expect(
+        nextMaximum,
+        lessThanOrEqualTo(EnemySpawnBalance.maximumEnemyLimit),
+      );
       interval = nextInterval;
       maximum = nextMaximum;
     }

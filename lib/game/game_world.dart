@@ -69,6 +69,8 @@ class GameWorld {
 
   GameRunState runState = GameRunState.playing;
   double survivalTime = 0;
+  Offset _playerVelocity = Offset.zero;
+  Offset get playerVelocity => _playerVelocity;
   int defeatedEnemies = 0;
   int _nextEnemyId = 1;
 
@@ -95,10 +97,12 @@ class GameWorld {
 
   void setMovementInput(Offset input) {
     if (!isPlaying) {
+      _playerVelocity = Offset.zero;
       player.setMovementInput(Offset.zero);
       return;
     }
     player.setMovementInput(input);
+    if (player.movementInput == Offset.zero) _playerVelocity = Offset.zero;
   }
 
   SlimeEnemy spawnSlimeAt(
@@ -144,7 +148,11 @@ class GameWorld {
     survivalTime += deltaTime;
     _updateBossEncounter(deltaTime);
     player.update(deltaTime);
+    final previousPlayerPosition = player.position;
     _movePlayer(deltaTime);
+    // Lead aims from actual world movement, including diagonal normalization
+    // and walls/enemy blocking, instead of the joystick's intended direction.
+    _playerVelocity = (player.position - previousPlayerPosition) / deltaTime;
     for (final orbitingOrb in orbs) {
       orbitingOrb.update(
         deltaTime,
@@ -154,7 +162,7 @@ class GameWorld {
     _updateEffects(deltaTime);
 
     if (spawningEnabled && !isBossWarning && !(boss?.isActive ?? false)) {
-      final spawnPosition = spawner.update(
+      final spawnPositions = spawner.updateBatch(
         deltaTime: deltaTime * _slimeSpawnPace,
         survivalTime: survivalTime,
         playerLevel: player.stats.level,
@@ -164,7 +172,7 @@ class GameWorld {
         playerPosition: player.position,
         existingEnemies: enemies,
       );
-      if (spawnPosition != null) {
+      for (final spawnPosition in spawnPositions) {
         final isOpening = survivalTime < GameBalance.openingGraceDuration;
         spawnSlimeAt(
           spawnPosition,
@@ -197,6 +205,7 @@ class GameWorld {
       currentBoss.update(
         deltaTime,
         playerPosition: player.position,
+        playerVelocity: _playerVelocity,
         playerRadius: Player.radius,
         arena: arena,
       );
@@ -342,10 +351,11 @@ class GameWorld {
       ) {
         final second = activeEnemies[secondIndex];
         final difference = second.position - first.position;
-        final distance = difference.distance;
-        if (distance >= minimumDistance) {
+        final distanceSquared = difference.distanceSquared;
+        if (distanceSquared >= minimumDistance * minimumDistance) {
           continue;
         }
+        final distance = math.sqrt(distanceSquared);
 
         final direction = distance < 0.001
             ? Offset(
@@ -446,6 +456,7 @@ class GameWorld {
   void _beginLevelUpIfReady() {
     if (!player.stats.advanceLevelIfReady()) return;
     _sound(GameSound.powerUp);
+    _playerVelocity = Offset.zero;
     player.setMovementInput(Offset.zero);
     levelUpEffectTime = 0;
     final available = UpgradeDefinition.availableFor(player.stats)
@@ -710,6 +721,7 @@ class GameWorld {
       return;
     }
     runState = GameRunState.gameOver;
+    _playerVelocity = Offset.zero;
     player.setMovementInput(Offset.zero);
   }
 }
